@@ -1,26 +1,191 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+@theme {
+  --color-background: hsl(0 0% 100%);
+  --color-foreground: hsl(0 0% 3.9%);
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(0 0% 3.9%);
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(0 0% 3.9%);
+  --color-primary: hsl(180 100% 37%);
+  --color-primary-foreground: hsl(0 0% 98%);
+  --color-secondary: hsl(0 0% 96.1%);
+  --color-secondary-foreground: hsl(0 0% 9%);
+  --color-muted: hsl(0 0% 96.1%);
+  --color-muted-foreground: hsl(0 0% 45.1%);
+  --color-accent: hsl(4 95% 63%);
+  --color-accent-foreground: hsl(0 0% 98%);
+  --color-destructive: hsl(0 84.2% 60.2%);
+  --color-destructive-foreground: hsl(0 0% 98%);
+  --color-border: hsl(0 0% 89.8%);
+  --color-input: hsl(0 0% 89.8%);
+  --color-ring: hsl(0 0% 3.9%);
+  --radius: 0.5rem;
+  
+  /* Landing page specific colors */
+  --color-background-light: 246 247 248;
+  --color-background-dark: 16 25 34;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  @theme {
+    --color-background: hsl(0 0% 3.9%);
+    --color-foreground: hsl(0 0% 98%);
+    --color-card: hsl(0 0% 3.9%);
+    --color-card-foreground: hsl(0 0% 98%);
+    --color-popover: hsl(0 0% 3.9%);
+    --color-popover-foreground: hsl(0 0% 98%);
+  --color-primary: hsl(180 100% 37%);
+  --color-primary-foreground: hsl(0 0% 98%);
+    --color-secondary: hsl(0 0% 14.9%);
+    --color-secondary-foreground: hsl(0 0% 98%);
+    --color-muted: hsl(0 0% 14.9%);
+    --color-muted-foreground: hsl(0 0% 63.9%);
+  --color-accent: hsl(4 95% 63%);
+  --color-accent-foreground: hsl(0 0% 98%);
+    --color-destructive: hsl(0 62.8% 30.6%);
+    --color-destructive-foreground: hsl(0 0% 98%);
+    --color-border: hsl(0 0% 14.9%);
+    --color-input: hsl(0 0% 14.9%);
+    --color-ring: hsl(0 0% 83.1%);
   }
 }
 
+* {
+  border-color: hsl(var(--color-border));
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: hsl(var(--color-background));
+  color: hsl(var(--color-foreground));
+  font-family: var(--font-manrope), var(--font-geist-sans), 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Link styles - Papir.ai brand colors */
+a:not([class*="button"]):not([class*="Button"]) {
+  color: hsl(var(--color-primary));
+  transition: color 0.2s ease;
+}
+
+a:not([class*="button"]):not([class*="Button"]):hover {
+  color: hsl(var(--color-primary));
+  opacity: 0.8;
+}
+
+/* Headings use Manrope font with Papir.ai styling */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-manrope), sans-serif;
+  font-weight: 700;
+  color: hsl(var(--color-foreground));
+}
+
+/* Links use primary color */
+a {
+  color: hsl(var(--color-primary));
+  text-decoration: none;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+a:hover {
+  opacity: 0.8;
+}
+
+/* Buttons use primary color by default */
+button[class*="Button"], .btn {
+  font-family: var(--font-manrope), sans-serif;
+}
+
+/* Papir.ai button styles */
+.button {
+  font-family: var(--font-manrope), sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+
+.button-red {
+  background-color: rgb(254, 76, 60);
+  color: white;
+}
+
+.button-red:hover {
+  background-color: rgba(254, 76, 60, 0.9);
+  transform: scale(1.05);
+}
+
+.button-egg-blue {
+  background-color: hsl(180 100% 37%);
+  color: white;
+}
+
+.button-egg-blue:hover {
+  background-color: hsl(180 100% 35%);
+  transform: scale(1.05);
+}
+
+.me-3 {
+  margin-right: 1rem;
+}
+
+/* Landing page text styles */
+.block {
+  display: block;
+}
+
+.card-body {
+  padding: 0;
+}
+
+.text {
+  font-family: var(--font-manrope), sans-serif;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: hsl(var(--color-foreground));
+  margin: 0;
+}
+
+@media (min-width: 768px) {
+  .text {
+    font-size: 1.125rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .text {
+    font-size: 1.25rem;
+  }
+}
+
+/* Accordion animations */
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+.animate-accordion-down {
+  animation: accordion-down 0.2s ease-out;
+}
+
+.animate-accordion-up {
+  animation: accordion-up 0.2s ease-out;
 }
