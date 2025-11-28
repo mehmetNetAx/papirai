@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 import { redirect } from 'next/navigation';
-import LandingPage from './landing-page';
+import MarketingPage from './(marketing)/page';
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
@@ -11,6 +11,7 @@ export default async function Home() {
     redirect('/dashboard');
   }
 
-  // Show landing page for unauthenticated users
-  return <LandingPage />;
+  // Show marketing page for unauthenticated users
+  return <MarketingPage />;
 }
+

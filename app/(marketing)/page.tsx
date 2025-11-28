@@ -1,8 +1,17 @@
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/config';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import Logo from '@/components/brand/Logo';
 
-export default function LandingPage() {
+export default async function MarketingPage() {
+  const session = await getServerSession(authOptions);
+
+  // If user is logged in, redirect to dashboard
+  if (session) {
+    redirect('/dashboard');
+  }
   return (
     <div className="relative flex min-h-screen w-full flex-col">
       {/* TopNavBar */}
