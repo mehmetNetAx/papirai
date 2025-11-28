@@ -14,34 +14,64 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         try {
           if (!credentials?.email || !credentials?.password) {
-            console.error('Missing credentials');
+            console.error('[Auth] Missing credentials');
             return null;
           }
 
-          await connectDB();
+          // Check if NEXTAUTH_SECRET is set
+          if (!process.env.NEXTAUTH_SECRET) {
+            console.error('[Auth] NEXTAUTH_SECRET is not set');
+            return null;
+          }
 
+          // Check if MONGODB_URI is set
+          if (!process.env.MONGODB_URI) {
+            console.error('[Auth] MONGODB_URI is not set');
+            return null;
+          }
+
+          // Connect to database
+          try {
+            await connectDB();
+          } catch (dbError: any) {
+            console.error('[Auth] Database connection failed:', dbError.message);
+            return null;
+          }
+
+          // Find user
           const user = await User.findOne({ email: credentials.email.toLowerCase() }).select('+password');
 
           if (!user) {
-            console.error('User not found:', credentials.email.toLowerCase());
+            console.error('[Auth] User not found:', credentials.email.toLowerCase());
             return null;
           }
 
           if (!user.isActive) {
-            console.error('User is not active:', user.email);
+            console.error('[Auth] User is not active:', user.email);
+            return null;
+          }
+
+          // Verify password
+          if (!user.password) {
+            console.error('[Auth] User password field is missing');
             return null;
           }
 
           const isPasswordValid = await user.comparePassword(credentials.password);
 
           if (!isPasswordValid) {
-            console.error('Invalid password for user:', user.email);
+            console.error('[Auth] Invalid password for user:', user.email);
             return null;
           }
 
           // Update last login
-          user.lastLogin = new Date();
-          await user.save({ validateBeforeSave: false });
+          try {
+            user.lastLogin = new Date();
+            await user.save({ validateBeforeSave: false });
+          } catch (saveError: any) {
+            // Don't fail auth if save fails, just log it
+            console.warn('[Auth] Failed to update last login:', saveError.message);
+          }
 
           return {
             id: user._id.toString(),
@@ -52,7 +82,8 @@ export const authOptions: NextAuthOptions = {
             groupId: user.groupId?.toString(),
           };
         } catch (error: any) {
-          console.error('Authorization error:', error);
+          console.error('[Auth] Authorization error:', error.message || error);
+          console.error('[Auth] Error stack:', error.stack);
           return null;
         }
       },
@@ -87,5 +118,6 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === 'development',
 };
 
