@@ -33,14 +33,18 @@ export default function LoginPage() {
         let errorMessage = 'Geçersiz e-posta veya şifre';
         
         if (result.error === 'CredentialsSignin') {
-          errorMessage = 'E-posta veya şifre hatalı. Lütfen tekrar deneyin.';
+          errorMessage = 'E-posta adresi veya şifre hatalı. Lütfen bilgilerinizi kontrol edip tekrar deneyin.';
         } else if (result.error.includes('database') || result.error.includes('connection')) {
-          errorMessage = 'Veritabanı bağlantı hatası. Lütfen daha sonra tekrar deneyin.';
+          errorMessage = 'Veritabanı bağlantı hatası. Lütfen daha sonra tekrar deneyin veya yöneticiye başvurun.';
         } else if (result.error.includes('configuration')) {
           errorMessage = 'Sistem yapılandırma hatası. Lütfen yöneticiye başvurun.';
+        } else {
+          // Show the actual error message if available
+          errorMessage = result.error || 'Giriş yapılamadı. Lütfen tekrar deneyin.';
         }
         
         console.error('[Login] Sign in error:', result.error);
+        console.error('[Login] Full result:', result);
         setError(errorMessage);
       } else if (result?.ok) {
         router.push('/dashboard');
@@ -118,8 +122,9 @@ export default function LoginPage() {
                     <input
                       id="login-email"
                       name="login-email"
-                      type="text"
+                      type="email"
                       placeholder="john@example.com"
+                      autoComplete="email"
                       className="form-control w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-[#324d67] bg-white dark:bg-[#192633] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#92adc9] focus:outline-none focus:ring-2 focus:ring-primary/50"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -150,6 +155,7 @@ export default function LoginPage() {
                           name="login-password"
                           type={showPassword ? 'text' : 'password'}
                           placeholder="Parola"
+                          autoComplete="current-password"
                           className="form-control-merge form-control w-full px-4 py-3 pr-10 rounded-lg border border-gray-300 dark:border-[#324d67] bg-white dark:bg-[#192633] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#92adc9] focus:outline-none focus:ring-2 focus:ring-primary/50"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
