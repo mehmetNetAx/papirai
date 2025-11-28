@@ -3,6 +3,7 @@ import connectDB from '@/lib/db/connection';
 import User from '@/lib/db/models/User';
 import Company from '@/lib/db/models/Company';
 import { registerSchema } from '@/lib/utils/validation';
+import mongoose from 'mongoose';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,8 +22,18 @@ export async function POST(request: NextRequest) {
     }
 
     // If no companyId provided, create a default company or use first available
-    let companyId = validatedData.companyId;
-    if (!companyId) {
+    let companyId: mongoose.Types.ObjectId;
+    if (validatedData.companyId) {
+      // Validate that the company exists
+      const company = await Company.findById(validatedData.companyId);
+      if (!company) {
+        return NextResponse.json(
+          { error: 'Company not found' },
+          { status: 400 }
+        );
+      }
+      companyId = new mongoose.Types.ObjectId(validatedData.companyId);
+    } else {
       let defaultCompany = await Company.findOne({ type: 'group', isActive: true });
       if (!defaultCompany) {
         // Create a default company
@@ -32,7 +43,7 @@ export async function POST(request: NextRequest) {
           isActive: true,
         });
       }
-      companyId = defaultCompany._id.toString();
+      companyId = defaultCompany._id;
     }
 
     // Create user with viewer role by default
@@ -60,9 +71,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Handle MongoDB duplicate key error
+    if (error.code === 11000) {
+      return NextResponse.json(
+        { error: 'User with this email already exists' },
+        { status: 400 }
+      );
+    }
+
+    // Handle MongoDB validation errors
+    if (error.name === 'ValidationError') {
+      return NextResponse.json(
+        { error: 'Validation error', details: error.message },
+        { status: 400 }
+      );
+    }
+
     console.error('Registration error:', error);
     return NextResponse.json(
-      { error: 'Failed to create user' },
+      { error: 'Failed to create user', details: process.env.NODE_ENV === 'development' ? error.message : undefined },
       { status: 500 }
     );
   }

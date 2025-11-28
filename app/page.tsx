@@ -32,7 +32,7 @@ export default async function Home() {
           </div>
           <Link href="/login">
             <Button className="min-w-[84px]">
-              Demo Talep Edin
+              Giriş
             </Button>
           </Link>
         </nav>
@@ -54,6 +54,11 @@ export default async function Home() {
                   <Link href="/register">
                     <Button size="lg" className="w-full sm:w-auto min-w-[84px] shadow-lg hover:scale-105 transition-transform">
                       Ücretsiz Başlayın
+                    </Button>
+                  </Link>
+                  <Link href="/login">
+                    <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[84px]">
+                      Giriş Yap
                     </Button>
                   </Link>
                 </div>
@@ -131,18 +136,18 @@ export default async function Home() {
             <div className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
               <TestimonialCard
                 image="https://lh3.googleusercontent.com/aida-public/AB6AXuAdvStwfwIpJF0ac_JjPjqcfFBVOJWICs_fuOjL0iQ3unDnGN0gAkDx3W5MCrdrxF3vk6EyRfF3yhUF9bAOpEqjLArxOlYEVH-x8BxymqnpuhsO9_p81lpR6p1D4jDznvyMSmcJKju2ipOB83bRlcdXGzVvJBND6i1bVchxP1isaYxiHzQ4-GTsOoH5knY1O3HjECBulNCq5dNGY3PyNxbZk4Y3sPepHGezs7BARiqmlpNDsKU-YOFWbuquoGtn6zLR5PlybRVWEhyq"
-                name="Alex Johnson, CEO @ InnovateCorp"
-                quote="Papirai, sözleşme yönetimimizi devrim yaratarak bize sayısız saat kazandırdı ve riski önemli ölçüde azalttı."
+                name="Mehmet Yılmaz, Genel Müdür @ Teknoloji Holding"
+                quote="Papirai, sözleşme yönetimimizi devrim yaratarak bize sayısız saat kazandırdı ve riski önemli ölçüde azalttı. Türkiye'deki iş süreçlerimize mükemmel uyum sağladı."
               />
               <TestimonialCard
                 image="https://lh3.googleusercontent.com/aida-public/AB6AXuC_LgsUrj3BFAANIPjxipeYZeSEIlsIDI5wpuZZafaEdTtUukm9pJ6CZkHtlTjtaMKoJOoSyCsp7bN0gGNtApjTOyH88lE5tThKNgh2trHjKZNKm4y4ZhCV7N23YQaUKXmjybSoTYK0Tu5pV3TISJa5NLK9CRCTEWS5PEMaVHdc0ZrM7mXmw5hRKgKeiHkrnT_t38CoIEVtRrtAn5KE8SKYgl9lHguLzBA67EPPoy3uS488qQ9xEfFUYg-23QxWiBAkbRdNI1IJTpyU"
-                name="Samantha Lee, Hukuk Başkanı @ TechSolutions"
-                quote="Uyum kontrolü özellikleri hukuk ekibimiz için ezber bozan bir yenilik. Artık tüm sözleşmelerin düzenlemelere uymasını zahmetsizce sağlayabiliyoruz."
+                name="Ayşe Demir, Hukuk Müdürü @ İnovasyon A.Ş."
+                quote="Uyum kontrolü özellikleri hukuk ekibimiz için ezber bozan bir yenilik. Artık tüm sözleşmelerin Türk mevzuatına uyumunu zahmetsizce sağlayabiliyoruz."
               />
               <TestimonialCard
                 image="https://lh3.googleusercontent.com/aida-public/AB6AXuCiFVPYKhpUrtaq4g1Dx9tjqDdEPARMEpUkABB-wPDk5Un8FHlESUrtMxZ8VLqD877lqslMVWLn48n1A21YfJXg4GG47bmUQvD2nwSMkld79-i7HypuN4BFzWwVvlWEH7y7mJbrJqz32XLN-JxIqfhVQXdZElmuamEgvpHNl2xl7foG47HNoyQXotN1ViT9C-tWP4gM6R570_sFBbZKsAuS90xc5j4q931cNiA1BLNbjw-V-Whtntpy7TxqH8wi1tz9ARrAkcqdr6_v"
-                name="David Chen, CTO @ NextGen Enterprises"
-                quote="Mevcut sistemlerimizle sorunsuz entegrasyon büyük bir avantajdı. Platform güçlü ve inanılmaz derecede kullanımı kolay."
+                name="Can Özkan, BT Direktörü @ Yeni Nesil Şirketler Grubu"
+                quote="Mevcut ERP sistemlerimizle sorunsuz entegrasyon büyük bir avantajdı. Platform güçlü ve Türkçe arayüzü sayesinde inanılmaz derecede kullanımı kolay."
               />
             </div>
           </div>
@@ -157,11 +162,18 @@ export default async function Home() {
             <p className="mx-auto mt-4 max-w-2xl text-lg text-gray-600 dark:text-gray-300">
               Bugün Papirai'ye katılın ve iş akışlarınızı basitleştirin, güvenliği artırın ve verimliliği en üst düzeye çıkarın.
             </p>
-            <Link href="/register" className="mt-8 inline-block">
-              <Button size="lg" className="mx-auto min-w-[84px] shadow-lg hover:scale-105 transition-transform">
-                Ücretsiz Başlayın
-              </Button>
-            </Link>
+            <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/register">
+                <Button size="lg" className="w-full sm:w-auto min-w-[84px] shadow-lg hover:scale-105 transition-transform">
+                  Ücretsiz Başlayın
+                </Button>
+              </Link>
+              <Link href="/login">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[84px]">
+                  Giriş Yap
+                </Button>
+              </Link>
+            </div>
           </div>
         </section>
       </main>

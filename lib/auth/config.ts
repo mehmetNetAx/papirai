@@ -12,36 +12,49 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+        try {
+          if (!credentials?.email || !credentials?.password) {
+            console.error('Missing credentials');
+            return null;
+          }
+
+          await connectDB();
+
+          const user = await User.findOne({ email: credentials.email.toLowerCase() }).select('+password');
+
+          if (!user) {
+            console.error('User not found:', credentials.email.toLowerCase());
+            return null;
+          }
+
+          if (!user.isActive) {
+            console.error('User is not active:', user.email);
+            return null;
+          }
+
+          const isPasswordValid = await user.comparePassword(credentials.password);
+
+          if (!isPasswordValid) {
+            console.error('Invalid password for user:', user.email);
+            return null;
+          }
+
+          // Update last login
+          user.lastLogin = new Date();
+          await user.save({ validateBeforeSave: false });
+
+          return {
+            id: user._id.toString(),
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            companyId: user.companyId.toString(),
+            groupId: user.groupId?.toString(),
+          };
+        } catch (error: any) {
+          console.error('Authorization error:', error);
           return null;
         }
-
-        await connectDB();
-
-        const user = await User.findOne({ email: credentials.email.toLowerCase() }).select('+password');
-
-        if (!user || !user.isActive) {
-          return null;
-        }
-
-        const isPasswordValid = await user.comparePassword(credentials.password);
-
-        if (!isPasswordValid) {
-          return null;
-        }
-
-        // Update last login
-        user.lastLogin = new Date();
-        await user.save({ validateBeforeSave: false });
-
-        return {
-          id: user._id.toString(),
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          companyId: user.companyId.toString(),
-          groupId: user.groupId?.toString(),
-        };
       },
     }),
   ],
