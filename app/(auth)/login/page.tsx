@@ -23,19 +23,34 @@ export default function LoginPage() {
 
     try {
       const result = await signIn('credentials', {
-        email,
+        email: email.trim().toLowerCase(),
         password,
         redirect: false,
       });
 
       if (result?.error) {
-        setError('Geçersiz e-posta veya şifre');
-      } else {
+        // NextAuth error codes
+        let errorMessage = 'Geçersiz e-posta veya şifre';
+        
+        if (result.error === 'CredentialsSignin') {
+          errorMessage = 'E-posta veya şifre hatalı. Lütfen tekrar deneyin.';
+        } else if (result.error.includes('database') || result.error.includes('connection')) {
+          errorMessage = 'Veritabanı bağlantı hatası. Lütfen daha sonra tekrar deneyin.';
+        } else if (result.error.includes('configuration')) {
+          errorMessage = 'Sistem yapılandırma hatası. Lütfen yöneticiye başvurun.';
+        }
+        
+        console.error('[Login] Sign in error:', result.error);
+        setError(errorMessage);
+      } else if (result?.ok) {
         router.push('/dashboard');
         router.refresh();
+      } else {
+        setError('Giriş yapılamadı. Lütfen tekrar deneyin.');
       }
-    } catch (err) {
-      setError('Bir hata oluştu. Lütfen tekrar deneyin.');
+    } catch (err: any) {
+      console.error('[Login] Unexpected error:', err);
+      setError(err?.message || 'Bir hata oluştu. Lütfen tekrar deneyin.');
     } finally {
       setLoading(false);
     }

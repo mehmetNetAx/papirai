@@ -21,13 +21,13 @@ export const authOptions: NextAuthOptions = {
           // Check if NEXTAUTH_SECRET is set
           if (!process.env.NEXTAUTH_SECRET) {
             console.error('[Auth] NEXTAUTH_SECRET is not set');
-            return null;
+            throw new Error('Authentication configuration error: NEXTAUTH_SECRET is missing');
           }
 
           // Check if MONGODB_URI is set
           if (!process.env.MONGODB_URI) {
             console.error('[Auth] MONGODB_URI is not set');
-            return null;
+            throw new Error('Database configuration error: MONGODB_URI is missing');
           }
 
           // Connect to database
@@ -35,7 +35,8 @@ export const authOptions: NextAuthOptions = {
             await connectDB();
           } catch (dbError: any) {
             console.error('[Auth] Database connection failed:', dbError.message);
-            return null;
+            console.error('[Auth] Database error stack:', dbError.stack);
+            throw new Error(`Database connection failed: ${dbError.message}`);
           }
 
           // Find user

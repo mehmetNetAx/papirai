@@ -82,3 +82,27 @@ Log'larda şu mesajları arayın:
 - `[Auth] User is not active` - Kullanıcı aktif değil
 - `[Auth] Invalid password` - Şifre yanlış
 
+## Hızlı Kontrol Listesi
+
+401 hatası alıyorsanız şunları kontrol edin:
+
+1. ✅ **NEXTAUTH_SECRET** ayarlı mı? (en az 32 karakter)
+2. ✅ **NEXTAUTH_URL** doğru mu? (production URL'iniz, örn: `https://your-app.vercel.app`)
+3. ✅ **MONGODB_URI** doğru mu? (MongoDB Atlas connection string)
+4. ✅ MongoDB Atlas Network Access'te `0.0.0.0/0` var mı?
+5. ✅ Kullanıcı veritabanında mevcut mu?
+6. ✅ Kullanıcının `isActive: true` olduğundan emin olun
+7. ✅ Şifre doğru mu?
+
+## Test Endpoint (Development Only)
+
+Development modunda environment variables'ı test etmek için:
+
+```bash
+# Terminal'de
+node -e "console.log('NEXTAUTH_SECRET:', process.env.NEXTAUTH_SECRET ? 'SET' : 'NOT SET')"
+node -e "console.log('MONGODB_URI:', process.env.MONGODB_URI ? 'SET' : 'NOT SET')"
+```
+
+**NOT:** Production'da bu komutları çalıştırmayın, sadece Vercel log'larını kontrol edin.
+
