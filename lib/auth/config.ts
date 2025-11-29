@@ -12,67 +12,93 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
+        const startTime = Date.now();
+        const email = credentials?.email?.toLowerCase().trim();
+        
         try {
+          // Step 1: Validate credentials
           if (!credentials?.email || !credentials?.password) {
-            console.error('[Auth] Missing credentials');
+            console.error('[Auth] Missing credentials - email or password not provided');
             return null;
           }
 
-          // Check if NEXTAUTH_SECRET is set
+          console.log(`[Auth] Attempting login for: ${email}`);
+
+          // Step 2: Check environment variables
           if (!process.env.NEXTAUTH_SECRET) {
             console.error('[Auth] NEXTAUTH_SECRET is not set');
+            console.error('[Auth] This is a critical configuration error. Please set NEXTAUTH_SECRET in Vercel environment variables.');
             throw new Error('Authentication configuration error: NEXTAUTH_SECRET is missing');
           }
 
-          // Check if MONGODB_URI is set
           if (!process.env.MONGODB_URI) {
             console.error('[Auth] MONGODB_URI is not set');
+            console.error('[Auth] This is a critical configuration error. Please set MONGODB_URI in Vercel environment variables.');
             throw new Error('Database configuration error: MONGODB_URI is missing');
           }
 
-          // Connect to database
+          if (!process.env.NEXTAUTH_URL) {
+            console.warn('[Auth] NEXTAUTH_URL is not set - this may cause issues in production');
+          }
+
+          // Step 3: Connect to database
+          console.log('[Auth] Connecting to database...');
           try {
             await connectDB();
+            console.log('[Auth] Database connection successful');
           } catch (dbError: any) {
             console.error('[Auth] Database connection failed:', dbError.message);
             console.error('[Auth] Database error stack:', dbError.stack);
+            console.error('[Auth] MONGODB_URI format check:', process.env.MONGODB_URI?.substring(0, 20) + '...');
             throw new Error(`Database connection failed: ${dbError.message}`);
           }
 
-          // Find user
-          const user = await User.findOne({ email: credentials.email.toLowerCase() }).select('+password');
+          // Step 4: Find user
+          console.log(`[Auth] Searching for user: ${email}`);
+          const user = await User.findOne({ email }).select('+password');
 
           if (!user) {
-            console.error('[Auth] User not found:', credentials.email.toLowerCase());
+            console.error(`[Auth] User not found: ${email}`);
+            console.error('[Auth] Make sure the user exists in the database. Check if seed script was run.');
             return null;
           }
 
+          console.log(`[Auth] User found: ${user.email}, isActive: ${user.isActive}, role: ${user.role}`);
+
+          // Step 5: Check if user is active
           if (!user.isActive) {
-            console.error('[Auth] User is not active:', user.email);
+            console.error(`[Auth] User is not active: ${user.email}`);
             return null;
           }
 
-          // Verify password
+          // Step 6: Verify password
           if (!user.password) {
-            console.error('[Auth] User password field is missing');
+            console.error('[Auth] User password field is missing - this should not happen');
             return null;
           }
 
+          console.log('[Auth] Verifying password...');
           const isPasswordValid = await user.comparePassword(credentials.password);
 
           if (!isPasswordValid) {
-            console.error('[Auth] Invalid password for user:', user.email);
+            console.error(`[Auth] Invalid password for user: ${user.email}`);
             return null;
           }
 
-          // Update last login
+          console.log('[Auth] Password verified successfully');
+
+          // Step 7: Update last login
           try {
             user.lastLogin = new Date();
             await user.save({ validateBeforeSave: false });
+            console.log('[Auth] Last login updated');
           } catch (saveError: any) {
             // Don't fail auth if save fails, just log it
             console.warn('[Auth] Failed to update last login:', saveError.message);
           }
+
+          const duration = Date.now() - startTime;
+          console.log(`[Auth] Login successful for ${email} (took ${duration}ms)`);
 
           return {
             id: user._id.toString(),
@@ -83,8 +109,19 @@ export const authOptions: NextAuthOptions = {
             groupId: user.groupId?.toString(),
           };
         } catch (error: any) {
-          console.error('[Auth] Authorization error:', error.message || error);
+          const duration = Date.now() - startTime;
+          console.error(`[Auth] Authorization error (took ${duration}ms):`, error.message || error);
           console.error('[Auth] Error stack:', error.stack);
+          console.error('[Auth] Error type:', error.constructor.name);
+          
+          // Log environment info for debugging (without sensitive data)
+          console.error('[Auth] Environment check:', {
+            hasNEXTAUTH_SECRET: !!process.env.NEXTAUTH_SECRET,
+            hasMONGODB_URI: !!process.env.MONGODB_URI,
+            hasNEXTAUTH_URL: !!process.env.NEXTAUTH_URL,
+            NODE_ENV: process.env.NODE_ENV,
+          });
+          
           return null;
         }
       },

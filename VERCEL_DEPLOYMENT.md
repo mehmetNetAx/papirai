@@ -39,8 +39,23 @@ AWS_S3_BUCKET=your-bucket-name
 2. Projenizi seçin
 3. Settings > Environment Variables bölümüne gidin
 4. Yukarıdaki tüm değişkenleri ekleyin
-5. Her birini Production, Preview ve Development için işaretleyin
-6. Deploy'u yeniden yapın
+5. **KRİTİK:** Her birini Production, Preview ve Development için işaretleyin
+6. **ÖNEMLİ:** Environment variables ekledikten veya değiştirdikten sonra mutlaka yeni bir deployment yapın
+
+### Environment Variables Scope Kontrolü
+
+Her environment variable'ın yanında scope gösterilir:
+- ✅ **Production** - Production deployment'lar için
+- ✅ **Preview** - Preview deployment'lar için  
+- ✅ **Development** - Development deployment'lar için
+
+**"All Environments" görünüyor olsa bile, her bir environment variable'ı tek tek kontrol edin:**
+1. Environment variable'ın yanındaki üç nokta (⋯) menüsüne tıklayın
+2. "Edit" seçeneğini seçin
+3. Production, Preview ve Development checkbox'larının işaretli olduğundan emin olun
+4. "Save" butonuna tıklayın
+
+**ÖNEMLİ:** Environment variables değişiklikleri sadece yeni deployment'larda aktif olur. Değişiklik yaptıktan sonra mutlaka redeploy yapın!
 
 ## Troubleshooting 401 Errors
 
@@ -94,6 +109,126 @@ Log'larda şu mesajları arayın:
 6. ✅ Kullanıcının `isActive: true` olduğundan emin olun
 7. ✅ Şifre doğru mu?
 
+## Veritabanı Bağlantı Testi
+
+Production'da veritabanı bağlantısını test etmek için:
+
+1. Tarayıcınızda şu URL'yi açın:
+   ```
+   https://your-domain.vercel.app/api/health/db
+   ```
+
+2. Response'da şunları kontrol edin:
+   - `status: "ok"` - Endpoint çalışıyor
+   - `environment.MONGODB_URI: true` - MongoDB URI ayarlı
+   - `environment.NEXTAUTH_SECRET: true` - NextAuth secret ayarlı
+   - `database.status: "connected"` - Veritabanı bağlantısı başarılı
+   - `database.userCount` - Veritabanında kaç kullanıcı var
+
+Eğer `database.status: "error"` görüyorsanız:
+- MongoDB Atlas Network Access'te `0.0.0.0/0` ekleyin
+- MongoDB connection string'in doğru olduğundan emin olun
+- MongoDB kullanıcısının doğru izinlere sahip olduğundan emin olun
+
+## Adım Adım Sorun Giderme
+
+### 1. Veritabanı Bağlantısını Kontrol Et
+
+```bash
+# Tarayıcıda veya curl ile
+curl https://your-domain.vercel.app/api/health/db
+```
+
+Response örneği:
+```json
+{
+  "status": "ok",
+  "environment": {
+    "MONGODB_URI": true,
+    "NEXTAUTH_SECRET": true,
+    "NEXTAUTH_URL": true,
+    "NODE_ENV": "production"
+  },
+  "database": {
+    "status": "connected",
+    "error": null,
+    "userCount": 6
+  }
+}
+```
+
+### 2. Vercel Log'larını Kontrol Et
+
+1. Vercel Dashboard > Projeniz > Deployments
+2. Son deployment'ı seçin
+3. "Functions" sekmesine gidin
+4. `/api/auth/[...nextauth]` endpoint'ini seçin
+5. Login denemesi yapın ve log'ları izleyin
+
+**Başarılı login log'ları:**
+```
+[Auth] Attempting login for: user@example.com
+[Auth] Connecting to database...
+[Auth] Database connection successful
+[Auth] Searching for user: user@example.com
+[Auth] User found: user@example.com, isActive: true, role: system_admin
+[Auth] Verifying password...
+[Auth] Password verified successfully
+[Auth] Last login updated
+[Auth] Login successful for user@example.com (took 234ms)
+```
+
+**Hata log'ları:**
+- `[Auth] NEXTAUTH_SECRET is not set` → Vercel'de NEXTAUTH_SECRET ekleyin
+- `[Auth] MONGODB_URI is not set` → Vercel'de MONGODB_URI ekleyin
+- `[Auth] Database connection failed` → MongoDB Atlas ayarlarını kontrol edin
+- `[Auth] User not found` → Kullanıcı veritabanında yok, seed script çalıştırın
+- `[Auth] Invalid password` → Şifre yanlış
+
+### 3. MongoDB Atlas Ayarları
+
+1. **Network Access:**
+   - MongoDB Atlas Dashboard > Network Access
+   - "Add IP Address" butonuna tıklayın
+   - "Allow Access from Anywhere" seçeneğini seçin (0.0.0.0/0)
+   - Veya Vercel'in IP adreslerini ekleyin
+
+2. **Database User:**
+   - MongoDB Atlas Dashboard > Database Access
+   - Kullanıcının "Read and write to any database" iznine sahip olduğundan emin olun
+
+3. **Connection String:**
+   - MongoDB Atlas Dashboard > Database > Connect
+   - "Connect your application" seçeneğini seçin
+   - Connection string'i kopyalayın
+   - Şifreyi ve database adını güncelleyin
+   - Format: `mongodb+srv://username:password@cluster.mongodb.net/database?retryWrites=true&w=majority`
+
+### 4. Kullanıcı Oluşturma
+
+Eğer veritabanında kullanıcı yoksa:
+
+1. Local'de seed script'i çalıştırın:
+   ```bash
+   npm run seed
+   ```
+
+2. Veya MongoDB Atlas'ta manuel olarak kullanıcı oluşturun
+
+3. Seed script'teki örnek kullanıcılar:
+   - System Admin: `admin@acme.com` / `Admin123!`
+   - Group Admin: `groupadmin@acme.com` / `Admin123!`
+   - Company Admin: `admin@manufacturing.acme.com` / `Admin123!`
+
+### 5. Environment Variables Yeniden Deploy
+
+Environment variables ekledikten sonra:
+
+1. Vercel Dashboard > Projeniz > Settings > Environment Variables
+2. Tüm değişkenlerin doğru olduğundan emin olun
+3. **ÖNEMLİ:** Yeni bir deployment tetikleyin (Redeploy)
+4. Environment variables değişiklikleri sadece yeni deployment'larda aktif olur
+
 ## Test Endpoint (Development Only)
 
 Development modunda environment variables'ı test etmek için:
@@ -104,5 +239,5 @@ node -e "console.log('NEXTAUTH_SECRET:', process.env.NEXTAUTH_SECRET ? 'SET' : '
 node -e "console.log('MONGODB_URI:', process.env.MONGODB_URI ? 'SET' : 'NOT SET')"
 ```
 
-**NOT:** Production'da bu komutları çalıştırmayın, sadece Vercel log'larını kontrol edin.
+**NOT:** Production'da bu komutları çalıştırmayın, sadece Vercel log'larını ve `/api/health/db` endpoint'ini kullanın.
 
