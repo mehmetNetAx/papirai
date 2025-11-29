@@ -111,11 +111,13 @@ Log'larda şu mesajları arayın:
 
 ## Veritabanı Bağlantı Testi
 
+### 1. Genel Veritabanı Durumu
+
 Production'da veritabanı bağlantısını test etmek için:
 
 1. Tarayıcınızda şu URL'yi açın:
    ```
-   https://your-domain.vercel.app/api/health/db
+   https://papirai.vercel.app/api/health/db
    ```
 
 2. Response'da şunları kontrol edin:
@@ -124,11 +126,96 @@ Production'da veritabanı bağlantısını test etmek için:
    - `environment.NEXTAUTH_SECRET: true` - NextAuth secret ayarlı
    - `database.status: "connected"` - Veritabanı bağlantısı başarılı
    - `database.userCount` - Veritabanında kaç kullanıcı var
+   - `users.sample` - Örnek kullanıcı listesi (email, name, role, isActive)
+
+**Örnek başarılı response:**
+```json
+{
+  "status": "ok",
+  "environment": {
+    "MONGODB_URI": true,
+    "NEXTAUTH_SECRET": true,
+    "NEXTAUTH_URL": "https://papirai.vercel.app",
+    "NODE_ENV": "production"
+  },
+  "database": {
+    "status": "connected",
+    "userCount": 6,
+    "activeUserCount": 6
+  },
+  "users": {
+    "total": 6,
+    "active": 6,
+    "sample": [
+      {
+        "email": "admin@acme.com",
+        "name": "System Admin",
+        "role": "system_admin",
+        "isActive": true
+      }
+    ]
+  }
+}
+```
 
 Eğer `database.status: "error"` görüyorsanız:
 - MongoDB Atlas Network Access'te `0.0.0.0/0` ekleyin
 - MongoDB connection string'in doğru olduğundan emin olun
 - MongoDB kullanıcısının doğru izinlere sahip olduğundan emin olun
+
+### 2. Belirli Bir Kullanıcıyı Test Etme
+
+Belirli bir email ile kullanıcının var olup olmadığını test etmek için:
+
+**cURL ile:**
+```bash
+curl -X POST https://papirai.vercel.app/api/health/test-login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@acme.com"}'
+```
+
+**Tarayıcıda (JavaScript Console):**
+```javascript
+fetch('https://papirai.vercel.app/api/health/test-login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email: 'admin@acme.com' })
+})
+.then(r => r.json())
+.then(console.log);
+```
+
+**Response örneği:**
+```json
+{
+  "status": "success",
+  "email": "admin@acme.com",
+  "checks": {
+    "environment": {
+      "NEXTAUTH_SECRET": true,
+      "MONGODB_URI": true,
+      "NEXTAUTH_URL": true
+    },
+    "databaseConnection": "success",
+    "userExists": true,
+    "userFound": true,
+    "userActive": true
+  },
+  "user": {
+    "email": "admin@acme.com",
+    "name": "System Admin",
+    "role": "system_admin",
+    "isActive": true,
+    "hasPassword": true
+  },
+  "message": "User admin@acme.com found and is active. Ready for login."
+}
+```
+
+**Hata durumları:**
+- `"status": "error", "error": "User not found"` → Kullanıcı veritabanında yok
+- `"status": "error", "error": "User is not active"` → Kullanıcı var ama aktif değil
+- `"status": "error", "error": "Database connection failed"` → Veritabanı bağlantı hatası
 
 ## Adım Adım Sorun Giderme
 
