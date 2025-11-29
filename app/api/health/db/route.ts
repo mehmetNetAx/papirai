@@ -42,12 +42,28 @@ export async function GET() {
                         mongoose.connection.readyState === 2 ? 'connecting' :
                         mongoose.connection.readyState === 0 ? 'disconnected' : 'unknown';
       
+      let collections: string[] = [];
+      let dbName: string | undefined;
+      
+      if (mongoose.connection.db) {
+        dbName = mongoose.connection.db.databaseName;
+        try {
+          const cols = await mongoose.connection.db.listCollections().toArray();
+          collections = cols.map((c: any) => c.name);
+        } catch (colError: any) {
+          collections = [`Error listing collections: ${colError.message}`];
+        }
+      }
+      
       results.connectionDetails = {
         readyState: mongoose.connection.readyState,
         state: connectionState,
-        host: mongoose.connection.host,
-        port: mongoose.connection.port,
-        name: mongoose.connection.name,
+        host: mongoose.connection.host || 'unknown',
+        port: mongoose.connection.port || 'unknown',
+        name: mongoose.connection.name || 'unknown',
+        db: dbName,
+        collections: collections,
+        connectionId: mongoose.connection.id,
       };
       
       // Try to query users collection
@@ -79,6 +95,11 @@ export async function GET() {
       userCount,
       activeUserCount,
       connectionDetails: results.connectionDetails,
+      connectionString: {
+        hasUri: !!process.env.MONGODB_URI,
+        uriPrefix: process.env.MONGODB_URI ? process.env.MONGODB_URI.substring(0, 30) + '...' : 'NOT SET',
+        uriLength: process.env.MONGODB_URI ? process.env.MONGODB_URI.length : 0,
+      },
     };
 
     results.users = {

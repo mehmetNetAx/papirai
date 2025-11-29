@@ -8,7 +8,9 @@ export async function proxy(req: NextRequest) {
 
   // Public paths that don't require authentication
   const publicPaths = ['/', '/login', '/register'];
-  const isPublicPath = publicPaths.includes(path) || path.startsWith('/api/auth');
+  const isPublicPath = publicPaths.includes(path) || 
+                       path.startsWith('/api/auth') || 
+                       path.startsWith('/api/health');
 
   // If path is public, allow access
   if (isPublicPath) {
