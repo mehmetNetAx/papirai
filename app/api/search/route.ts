@@ -51,9 +51,12 @@ export async function GET(req: NextRequest) {
       }
 
       // Workspace filter
-      if (effectiveWorkspaceId) {
+      // System admin sees all contracts regardless of workspace selection
+      if (userRole === 'system_admin') {
+        // System admin sees all - no workspace filter
+      } else if (effectiveWorkspaceId) {
         searchQuery.workspaceId = new mongoose.Types.ObjectId(effectiveWorkspaceId);
-      } else if (userRole !== 'system_admin') {
+      } else {
         // For regular users, filter by accessible workspaces
         const accessibleWorkspaces = await getUserAccessibleWorkspaces(user, companyObjectId);
         if (accessibleWorkspaces.length > 0) {

@@ -16,7 +16,13 @@ const handleGet = requireAuth(async (req: NextRequest, user) => {
 
     let query: any = { isActive: true };
 
-    if (companyId) {
+    // System admin sees all workspaces
+    if (user.role === 'system_admin') {
+      // No company filter for system admin
+      if (companyId) {
+        query.companyId = companyId;
+      }
+    } else if (companyId) {
       // Verify user can access this company
       if (!canAccessCompany(user, companyId)) {
         return NextResponse.json(

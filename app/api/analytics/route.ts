@@ -12,7 +12,13 @@ export async function GET(req: NextRequest) {
       await connectDB();
 
       const { searchParams } = new URL(req.url);
-      const companyId = searchParams.get('companyId') || user.companyId;
+      let companyId = searchParams.get('companyId');
+      
+      // System admin sees all analytics (no company filter)
+      if (user.role !== 'system_admin') {
+        companyId = companyId || user.companyId;
+      }
+      
       const startDate = searchParams.get('startDate');
       const endDate = searchParams.get('endDate');
 
@@ -24,7 +30,11 @@ export async function GET(req: NextRequest) {
       }
 
       // Contract statistics
-      const contractQuery = { companyId, isActive: true, ...dateFilter };
+      const contractQuery: any = { isActive: true, ...dateFilter };
+      // System admin sees all contracts, others filter by company
+      if (user.role !== 'system_admin' && companyId) {
+        contractQuery.companyId = companyId;
+      }
       const [
         totalContracts,
         contractsByStatus,

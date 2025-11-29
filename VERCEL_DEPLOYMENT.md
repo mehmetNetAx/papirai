@@ -274,11 +274,38 @@ Response örneği:
 
 ### 3. MongoDB Atlas Ayarları
 
-1. **Network Access:**
-   - MongoDB Atlas Dashboard > Network Access
+1. **Network Access (KRİTİK - Bu adımı mutlaka yapın!):**
+   
+   **Adım 1:** MongoDB Atlas Dashboard'a gidin
+   - https://cloud.mongodb.com/
+   - Projenizi seçin
+   
+   **Adım 2:** Network Access sayfasına gidin
+   - Sol menüden "Network Access" seçeneğine tıklayın
+   - Veya: Security > Network Access
+   
+   **Adım 3:** IP Whitelist'e erişim ekleyin
    - "Add IP Address" butonuna tıklayın
-   - "Allow Access from Anywhere" seçeneğini seçin (0.0.0.0/0)
-   - Veya Vercel'in IP adreslerini ekleyin
+   - Açılan pencerede iki seçenek var:
+     
+     **Seçenek A (Önerilen - En Kolay):**
+     - "Allow Access from Anywhere" butonuna tıklayın
+     - Bu otomatik olarak `0.0.0.0/0` ekler (tüm IP'lere izin verir)
+     - "Confirm" butonuna tıklayın
+     - ⚠️ **Not:** Bu güvenlik açısından riskli olabilir, ama Vercel gibi dinamik IP'li servisler için gereklidir
+     
+     **Seçenek B (Daha Güvenli - Manuel):**
+     - "Add Current IP Address" butonuna tıklayın (sadece sizin IP'nizi ekler)
+     - Veya manuel olarak `0.0.0.0/0` yazın
+     - "Confirm" butonuna tıklayın
+   
+   **Adım 4:** Değişikliklerin aktif olmasını bekleyin
+   - IP ekleme işlemi genellikle 1-2 dakika sürer
+   - Status "Active" olana kadar bekleyin
+   
+   **Adım 5:** Test edin
+   - Vercel'de `/api/health/db` endpoint'ini tekrar test edin
+   - `database.status: "connected"` görmelisiniz
 
 2. **Database User:**
    - MongoDB Atlas Dashboard > Database Access

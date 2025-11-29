@@ -19,11 +19,12 @@ export async function GET(req: NextRequest) {
       if (contractId) {
         checks = await getComplianceChecks(contractId);
       } else {
-        // Get all checks for user's company contracts
+        // System admin sees all compliance checks
         const query: any = {};
         if (status) {
           query.status = status;
         }
+        // No additional filtering for system admin - they see all checks
         checks = await ComplianceCheck.find(query)
           .populate('contractId', 'title')
           .populate('variableId', 'name type')

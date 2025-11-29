@@ -17,6 +17,9 @@ export async function GET(req: NextRequest) {
 
       if (contractId) {
         query.contractId = contractId;
+      } else if (user.role === 'system_admin') {
+        // System admin sees all signatures
+        // No filter needed
       } else {
         // Get user's signatures
         query.signerId = user.id;

@@ -71,16 +71,8 @@ const handleGet = requireAuth(async (req: NextRequest, user) => {
     let effectiveCompanyId = user.selectedCompanyId || user.companyId;
     
     if (userRole === 'system_admin') {
-      // System admin sees all contracts (unless workspace is selected)
-      if (effectiveWorkspaceId) {
-        // If workspace is selected, filter by workspace's company
-        const workspace = await mongoose.model('Workspace').findById(effectiveWorkspaceId).lean();
-        if (workspace && (workspace as any).companyId) {
-          companyFilter = { companyId: (workspace as any).companyId };
-        }
-      } else {
-        companyFilter = {};
-      }
+      // System admin sees all contracts - no filtering by company or workspace
+      companyFilter = {};
     } else if (userRole === 'group_admin') {
       // Group admin sees all contracts in their group
       const userCompany = await Company.findById(companyObjectId).lean();
@@ -118,9 +110,12 @@ const handleGet = requireAuth(async (req: NextRequest, user) => {
     // If isActive is not provided, don't filter (show both active and archived)
 
     // Apply workspace filter
-    if (effectiveWorkspaceId) {
+    // System admin sees all contracts regardless of workspace selection
+    if (userRole === 'system_admin') {
+      // System admin sees all - no workspace filter
+    } else if (effectiveWorkspaceId) {
       query.workspaceId = new mongoose.Types.ObjectId(effectiveWorkspaceId);
-    } else if (userRole !== 'system_admin' && userRole !== 'group_admin') {
+    } else if (userRole !== 'group_admin') {
       // For regular users, filter by accessible workspaces
       const accessibleWorkspaces = await getUserAccessibleWorkspaces(user, companyObjectId);
       if (accessibleWorkspaces.length > 0) {

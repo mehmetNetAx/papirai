@@ -28,18 +28,8 @@ export async function buildReportFilters(user: AuthUser): Promise<{
 
   // Build company filter
   if (userRole === 'system_admin') {
-    // System admin sees all (unless workspace is selected)
-    if (finalWorkspaceId) {
-      const Workspace = mongoose.model('Workspace');
-      const workspace = await Workspace.findById(finalWorkspaceId).lean();
-      if (workspace && (workspace as any).companyId) {
-        companyFilter = { companyId: (workspace as any).companyId };
-      } else {
-        companyFilter = {};
-      }
-    } else {
-      companyFilter = {};
-    }
+    // System admin sees all - no filtering by company or workspace
+    companyFilter = {};
   } else if (userRole === 'group_admin') {
     // Group admin sees all contracts in their group
     const userCompany = await Company.findById(companyObjectId).lean();
@@ -59,9 +49,13 @@ export async function buildReportFilters(user: AuthUser): Promise<{
   }
 
   // Build workspace filter
-  if (finalWorkspaceId) {
+  // System admin sees all regardless of workspace selection
+  if (userRole === 'system_admin') {
+    // System admin sees all - no workspace filter
+    workspaceFilter = {};
+  } else if (finalWorkspaceId) {
     workspaceFilter = { workspaceId: new mongoose.Types.ObjectId(finalWorkspaceId) };
-  } else if (userRole !== 'system_admin' && userRole !== 'group_admin') {
+  } else if (userRole !== 'group_admin') {
     // For regular users, filter by accessible workspaces
     const accessibleWorkspaces = await getUserAccessibleWorkspaces(user, companyObjectId);
     if (accessibleWorkspaces.length > 0) {
