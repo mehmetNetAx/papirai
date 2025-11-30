@@ -30,7 +30,7 @@ REDIS_URL=redis://your-redis-url:6379
 AWS_ACCESS_KEY_ID=your-access-key
 AWS_SECRET_ACCESS_KEY=your-secret-key
 AWS_REGION=your-region
-AWS_S3_BUCKET=your-bucket-name
+AWS_S3_BUCKET_NAME=your-bucket-name
 ```
 
 ## Vercel'de Environment Variables Ayarlama

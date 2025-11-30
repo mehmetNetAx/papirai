@@ -9,6 +9,8 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import mongoose from 'mongoose';
 import NewContractForm from './NewContractForm';
+import { getSelectedWorkspaceIdFromRequest } from '@/lib/utils/context-cookie';
+import { headers } from 'next/headers';
 
 interface PageProps {
   searchParams: Promise<{ workspaceId?: string }>;
@@ -24,7 +26,21 @@ export default async function NewContractPage({ searchParams }: PageProps) {
   await connectDB();
   
   const params = await searchParams;
-  const preselectedWorkspaceId = params.workspaceId;
+  
+  // Get workspace ID from URL params first, then from cookie
+  let preselectedWorkspaceId = params.workspaceId;
+  
+  // If not in URL params, try to get from cookie
+  if (!preselectedWorkspaceId) {
+    try {
+      const headersList = await headers();
+      const cookieHeader = headersList.get('cookie') || undefined;
+      preselectedWorkspaceId = getSelectedWorkspaceIdFromRequest(cookieHeader) || undefined;
+    } catch (error) {
+      // If headers() fails, continue without cookie
+      console.warn('Could not read cookies:', error);
+    }
+  }
 
   // Convert string ID to ObjectId for MongoDB query
   const companyObjectId = new mongoose.Types.ObjectId(session.user.companyId);

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import AdvancedContractEditor from '@/components/editor/AdvancedContractEditor';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { getSelectedWorkspaceId } from '@/lib/utils/context-cookie';
 import {
   Select,
   SelectContent,
@@ -78,6 +79,8 @@ export default function NewContractForm({
   });
   const [contentKey, setContentKey] = useState('');
   const [aiVariables, setAiVariables] = useState<Array<{ name: string; description: string }>>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Contract types for combo box
   const contractTypes = [
@@ -105,10 +108,22 @@ export default function NewContractForm({
     { value: 'CHF', label: 'İsviçre Frangı (CHF)' },
   ];
   
-  // Update workspaceId if preselectedWorkspaceId changes
+  // Update workspaceId from preselectedWorkspaceId or cookie
   useEffect(() => {
-    if (preselectedWorkspaceId && workspaces.some(w => w._id.toString() === preselectedWorkspaceId)) {
-      setWorkspaceId(preselectedWorkspaceId);
+    // Priority: preselectedWorkspaceId (from URL) > cookie > empty
+    let selectedWorkspaceId = preselectedWorkspaceId;
+    
+    // If no preselectedWorkspaceId, try to get from cookie
+    if (!selectedWorkspaceId) {
+      selectedWorkspaceId = getSelectedWorkspaceId() || '';
+    }
+    
+    // Only set if the workspace exists in the available workspaces list
+    if (selectedWorkspaceId && workspaces.some(w => w._id.toString() === selectedWorkspaceId)) {
+      setWorkspaceId(selectedWorkspaceId);
+    } else if (!selectedWorkspaceId && workspaces.length === 1) {
+      // Auto-select if only one workspace available
+      setWorkspaceId(workspaces[0]._id);
     }
   }, [preselectedWorkspaceId, workspaces]);
 
@@ -280,6 +295,65 @@ export default function NewContractForm({
     }
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+    const allowedExtensions = ['pdf', 'doc', 'docx', 'txt'];
+    if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
+      setError('Geçersiz dosya tipi. Sadece PDF, Word (DOC/DOCX) ve TXT dosyaları desteklenmektedir.');
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Dosya boyutu çok büyük. Maksimum 10MB dosya yükleyebilirsiniz.');
+      return;
+    }
+
+    if (!workspaceId) {
+      setError('Önce bir çalışma alanı seçmelisiniz');
+      return;
+    }
+
+    setIsUploading(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('title', title || file.name.replace(/\.[^/.]+$/, ''));
+      formData.append('workspaceId', workspaceId);
+      formData.append('useAI', 'true');
+
+      const response = await fetch('/api/contracts/import', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Dosya yüklenirken bir hata oluştu');
+      }
+
+      const data = await response.json();
+      
+      // Redirect to edit page
+      router.push(`/dashboard/contracts/${data.contractId}/edit`);
+    } catch (err: any) {
+      console.error('Error uploading file:', err);
+      setError(err.message || 'Dosya yüklenirken bir hata oluştu');
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   if (workspaces.length === 0) {
     return (
       <Card>
@@ -300,17 +374,40 @@ export default function NewContractForm({
       {/* Form for title and workspace */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle>Sözleşme Bilgileri</CardTitle>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowAIDialog(true)}
-              className="gap-2"
-            >
-              <span className="material-symbols-outlined text-base">auto_awesome</span>
-              Yapay Zeka ile Oluştur
-            </Button>
+            <div className="flex gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.txt"
+                onChange={handleFileUpload}
+                className="hidden"
+                id="file-upload"
+                disabled={isUploading}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                className="gap-2"
+                disabled={isUploading || !workspaceId}
+              >
+                <span className="material-symbols-outlined text-base">
+                  {isUploading ? 'hourglass_empty' : 'upload_file'}
+                </span>
+                {isUploading ? 'Yükleniyor...' : 'Dosya Yükle'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowAIDialog(true)}
+                className="gap-2"
+              >
+                <span className="material-symbols-outlined text-base">auto_awesome</span>
+                Yapay Zeka ile Oluştur
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -424,6 +521,14 @@ export default function NewContractForm({
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          
+          {!workspaceId && (
+            <Alert>
+              <AlertDescription>
+                Dosya yüklemek için önce bir çalışma alanı seçmelisiniz.
+              </AlertDescription>
             </Alert>
           )}
           
