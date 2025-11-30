@@ -13,7 +13,9 @@ export async function POST(req: NextRequest) {
       const file = formData.get('file') as File;
       const title = formData.get('title') as string;
       const workspaceId = formData.get('workspaceId') as string;
-      const useAI = formData.get('useAI') !== 'false'; // Default to true
+      const useAIValue = formData.get('useAI') as string | null;
+      // Default to true if not provided or if value is 'true'
+      const useAI = useAIValue === null || useAIValue === 'true';
 
       if (!file || !title || !workspaceId) {
         return NextResponse.json(
@@ -41,14 +43,41 @@ export async function POST(req: NextRequest) {
           companyId: user.companyId,
           createdBy: user.id,
         },
-        { useAI: useAI === true || useAI === 'true' }
+        { useAI }
       );
 
       return NextResponse.json({ contractId }, { status: 201 });
     } catch (error: any) {
       console.error('Error importing contract:', error);
+      console.error('Error stack:', error.stack);
+      console.error('Error details:', {
+        message: error.message,
+        name: error.name,
+        code: error.code,
+      });
+      
+      // Provide more detailed error messages
+      let errorMessage = 'Dosya yüklenirken bir hata oluştu';
+      
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.code === 'ENOENT') {
+        errorMessage = 'Dosya bulunamadı';
+      } else if (error.code === 'EACCES') {
+        errorMessage = 'Dosyaya erişim izni yok';
+      } else if (error.name === 'ValidationError') {
+        errorMessage = 'Dosya formatı geçersiz';
+      } else if (error.message?.includes('AWS') || error.message?.includes('S3')) {
+        errorMessage = `S3 yükleme hatası: ${error.message}`;
+      } else if (error.message?.includes('Gemini') || error.message?.includes('AI')) {
+        errorMessage = `AI parse hatası: ${error.message}`;
+      }
+      
       return NextResponse.json(
-        { error: error.message || 'Failed to import contract' },
+        { 
+          error: errorMessage,
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        },
         { status: 500 }
       );
     }

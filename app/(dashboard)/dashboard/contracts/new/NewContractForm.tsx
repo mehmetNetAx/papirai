@@ -335,16 +335,34 @@ export default function NewContractForm({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Dosya yüklenirken bir hata oluştu');
+        const errorMessage = errorData.error || `Sunucu hatası: ${response.status} ${response.statusText}`;
+        console.error('API Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+        });
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
+      
+      if (!data.contractId) {
+        throw new Error('Sözleşme oluşturulamadı: Contract ID alınamadı');
+      }
       
       // Redirect to edit page
       router.push(`/dashboard/contracts/${data.contractId}/edit`);
     } catch (err: any) {
       console.error('Error uploading file:', err);
-      setError(err.message || 'Dosya yüklenirken bir hata oluştu');
+      console.error('Error details:', {
+        message: err.message,
+        name: err.name,
+        stack: err.stack,
+      });
+      
+      // Show detailed error message
+      const errorMessage = err.message || 'Dosya yüklenirken bir hata oluştu';
+      setError(errorMessage);
     } finally {
       setIsUploading(false);
       // Reset file input

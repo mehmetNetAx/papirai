@@ -72,32 +72,51 @@ export async function importDocument(
       if (parsedData.content) {
         finalContent = parsedData.content;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error parsing contract with AI:', error);
+      console.error('AI Parse Error details:', {
+        message: error.message,
+        name: error.name,
+      });
       // Continue with raw text if AI parsing fails
+      // Don't throw - we can still create the contract with raw text
     }
+  }
+  
+  // Validate that we have text content
+  if (!text || text.trim().length === 0) {
+    throw new Error('Dosyadan metin çıkarılamadı. Dosya formatını kontrol edin.');
   }
 
   // Create contract with extracted/parsed text
-  const contract = await Contract.create({
-    ...contractData,
-    content: finalContent,
-    status: 'draft',
-    // Set master fields if parsed
-    startDate: parsedData?.startDate ? new Date(parsedData.startDate) : undefined,
-    endDate: parsedData?.endDate ? new Date(parsedData.endDate) : undefined,
-    renewalDate: parsedData?.renewalDate ? new Date(parsedData.renewalDate) : undefined,
-    value: parsedData?.contractValue,
-    currency: parsedData?.currency || 'TRY',
-    counterparty: parsedData?.counterparty,
-    contractType: parsedData?.contractType,
-    metadata: {
-      originalFileName: fileName,
-      ...(s3Key && { s3Key }),
-      importedAt: new Date(),
-      aiParsed: !!parsedData,
-    },
-  });
+  let contract;
+  try {
+    contract = await Contract.create({
+      ...contractData,
+      content: finalContent,
+      status: 'draft',
+      // Set master fields if parsed
+      startDate: parsedData?.startDate ? new Date(parsedData.startDate) : undefined,
+      endDate: parsedData?.endDate ? new Date(parsedData.endDate) : undefined,
+      renewalDate: parsedData?.renewalDate ? new Date(parsedData.renewalDate) : undefined,
+      value: parsedData?.contractValue,
+      currency: parsedData?.currency || 'TRY',
+      counterparty: parsedData?.counterparty,
+      contractType: parsedData?.contractType,
+      metadata: {
+        originalFileName: fileName,
+        ...(s3Key && { s3Key }),
+        importedAt: new Date(),
+        aiParsed: !!parsedData,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error creating contract:', error);
+    if (error.name === 'ValidationError') {
+      throw new Error(`Sözleşme oluşturma hatası: ${Object.values(error.errors || {}).map((e: any) => e.message).join(', ')}`);
+    }
+    throw new Error(`Sözleşme oluşturulamadı: ${error.message || 'Bilinmeyen hata'}`);
+  }
 
   const contractId = contract._id.toString();
 
