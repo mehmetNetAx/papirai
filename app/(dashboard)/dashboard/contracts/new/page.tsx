@@ -96,6 +96,8 @@ export default async function NewContractPage({ searchParams }: PageProps) {
     counterparty: string,
     currency: string,
     contractValue: number,
+    counterpartyId?: string,
+    companyId?: string,
     variables?: Array<{ name: string; description: string }>
   ) => {
     'use server';
@@ -118,19 +120,23 @@ export default async function NewContractPage({ searchParams }: PageProps) {
       throw new Error('Bitiş tarihi başlangıç tarihinden sonra olmalıdır');
     }
     
+    // Use provided companyId or fallback to user's company
+    const finalCompanyId = companyId ? new mongoose.Types.ObjectId(companyId) : companyObjectId;
+    
     // Create new contract
     const { default: Contract } = await import('@/lib/db/models/Contract');
     const contract = await Contract.create({
       title,
       content,
       workspaceId: new mongoose.Types.ObjectId(workspaceId),
-      companyId: companyObjectId,
+      companyId: finalCompanyId,
       createdBy: new mongoose.Types.ObjectId(session.user.id),
       status: 'draft',
       startDate: startDateObj,
       endDate: endDateObj,
       contractType,
       counterparty,
+      counterpartyId: counterpartyId ? new mongoose.Types.ObjectId(counterpartyId) : undefined,
       currency,
       value: contractValue,
     });
@@ -270,6 +276,7 @@ export default async function NewContractPage({ searchParams }: PageProps) {
           userName={session.user.name}
           onSave={handleSave}
           preselectedWorkspaceId={preselectedWorkspaceId}
+          userCompanyId={session.user.companyId}
         />
       </div>
     </div>

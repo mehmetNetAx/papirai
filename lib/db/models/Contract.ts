@@ -1,6 +1,8 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 // Import Workspace to ensure it's registered before Contract schema references it
 import './Workspace';
+// Import CompanyDocument to ensure it's registered before Contract schema references it
+import './CompanyDocument';
 
 export interface IContract extends Document {
   title: string;
@@ -11,7 +13,9 @@ export interface IContract extends Document {
   createdBy: mongoose.Types.ObjectId;
   currentVersionId?: mongoose.Types.ObjectId;
   contractType?: string;
-  counterparty?: string;
+  counterparty?: string; // String olarak karşı taraf (geriye dönük uyumluluk için)
+  counterpartyId?: mongoose.Types.ObjectId; // Company referansı olarak karşı taraf
+  attachedDocumentIds?: mongoose.Types.ObjectId[]; // Şirket arşivinden eklenen dokümanlar
   startDate: Date;
   endDate: Date;
   renewalDate?: Date;
@@ -76,6 +80,16 @@ const ContractSchema = new Schema<IContract>(
       type: String,
       trim: true,
     },
+    counterpartyId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Company',
+      index: true,
+    },
+    attachedDocumentIds: [{
+      type: Schema.Types.ObjectId,
+      ref: 'CompanyDocument',
+      index: true,
+    }],
     startDate: {
       type: Date,
       required: false, // Made optional for existing contracts, but should be set for new ones
@@ -128,6 +142,8 @@ ContractSchema.index({ title: 'text', content: 'text', tags: 'text' });
 ContractSchema.index({ companyId: 1, workspaceId: 1, status: 1 });
 ContractSchema.index({ endDate: 1, renewalDate: 1 });
 ContractSchema.index({ assignedUsers: 1 });
+ContractSchema.index({ counterpartyId: 1 });
+ContractSchema.index({ attachedDocumentIds: 1 });
 
 const Contract: Model<IContract> = mongoose.models.Contract || mongoose.model<IContract>('Contract', ContractSchema);
 

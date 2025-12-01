@@ -186,6 +186,16 @@ const handleGet = requireAuth(async (req: NextRequest, user) => {
         select: 'name email',
         options: { strictPopulate: false }, // Don't fail if user doesn't exist
       })
+      .populate({
+        path: 'companyId',
+        select: 'name',
+        options: { strictPopulate: false }, // Don't fail if company doesn't exist
+      })
+      .populate({
+        path: 'counterpartyId',
+        select: 'name',
+        options: { strictPopulate: false }, // Don't fail if counterparty company doesn't exist
+      })
       .sort({ updatedAt: -1 })
       .lean();
 

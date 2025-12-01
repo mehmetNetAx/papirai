@@ -32,6 +32,8 @@ interface Contract {
   endDate: string | Date;
   workspaceId?: { name: string } | string;
   counterparty?: string;
+  companyId?: { name: string } | string;
+  counterpartyId?: { name: string } | string;
   updatedAt: string | Date;
   isActive?: boolean;
 }
@@ -532,7 +534,7 @@ export default function ContractsPage() {
                               <span>{workspaceName}</span>
                             </div>
                           )}
-                          {contract.counterparty && (
+                          {(contract.companyId || contract.counterpartyId || contract.counterparty) && (
                             <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path
@@ -542,7 +544,29 @@ export default function ContractsPage() {
                                   d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
                                 />
                               </svg>
-                              <span>{contract.counterparty}</span>
+                              <span>
+                                {(() => {
+                                  const companyName = typeof contract.companyId === 'object' && contract.companyId?.name 
+                                    ? contract.companyId.name 
+                                    : typeof contract.companyId === 'string' 
+                                    ? contract.companyId 
+                                    : null;
+                                  const counterpartyName = typeof contract.counterpartyId === 'object' && contract.counterpartyId?.name 
+                                    ? contract.counterpartyId.name 
+                                    : typeof contract.counterpartyId === 'string' 
+                                    ? contract.counterpartyId 
+                                    : contract.counterparty || null;
+                                  
+                                  if (companyName && counterpartyName) {
+                                    return `${companyName} ↔ ${counterpartyName}`;
+                                  } else if (companyName) {
+                                    return `Bizim Şirket: ${companyName}`;
+                                  } else if (counterpartyName) {
+                                    return `Karşı Taraf: ${counterpartyName}`;
+                                  }
+                                  return null;
+                                })()}
+                              </span>
                             </div>
                           )}
                           {contract.endDate && (

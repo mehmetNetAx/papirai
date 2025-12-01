@@ -78,7 +78,7 @@ export async function POST(
       
       // Check if this is a bulk update (multiple master variables at once)
       if (body.startDate !== undefined || body.endDate !== undefined || body.contractType !== undefined || 
-          body.counterparty !== undefined || body.currency !== undefined || body.contractValue !== undefined) {
+          body.counterparty !== undefined || body.counterpartyId !== undefined || body.companyId !== undefined || body.currency !== undefined || body.contractValue !== undefined) {
         // Bulk update mode
         const contract = await Contract.findById(id);
         if (!contract) {
@@ -149,6 +149,20 @@ export async function POST(
         // Set all master variables
         for (const update of updates) {
           await setMasterVariable(id, update.masterType, update.value, update.name);
+        }
+
+        // Update contract counterpartyId if provided
+        if (body.counterpartyId !== undefined) {
+          await Contract.findByIdAndUpdate(id, {
+            counterpartyId: body.counterpartyId ? new mongoose.Types.ObjectId(body.counterpartyId) : undefined,
+          });
+        }
+
+        // Update contract companyId if provided
+        if (body.companyId !== undefined) {
+          await Contract.findByIdAndUpdate(id, {
+            companyId: body.companyId ? new mongoose.Types.ObjectId(body.companyId) : undefined,
+          });
         }
 
         // Sync to contract model

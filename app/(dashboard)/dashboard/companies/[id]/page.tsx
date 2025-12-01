@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { canAccessCompany } from '@/lib/utils/permissions';
 import mongoose from 'mongoose';
 import EditCompanyForm from './EditCompanyForm';
+import CompanyDocumentManager from '@/components/documents/CompanyDocumentManager';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -56,7 +57,7 @@ export default async function CompanyDetailPage({ params }: PageProps) {
   }
 
   // Fetch related data
-  const [workspaces, users, subsidiaries] = await Promise.all([
+  const [workspaces, users, subsidiaries, allCompanies] = await Promise.all([
     Workspace.find({ companyId: companyObjectId, isActive: true })
       .populate('createdBy', 'name')
       .sort({ name: 1 })
@@ -70,6 +71,10 @@ export default async function CompanyDetailPage({ params }: PageProps) {
           .sort({ name: 1 })
           .lean()
       : Promise.resolve([]),
+    // Get all companies for counterparty selection (user can access)
+    session.user.role === 'system_admin'
+      ? Company.find({ isActive: true }).select('_id name').sort({ name: 1 }).lean()
+      : Company.find({ _id: { $ne: companyObjectId }, isActive: true }).select('_id name').sort({ name: 1 }).lean(),
   ]);
 
   const canEdit = ['system_admin', 'group_admin'].includes(session.user.role);
@@ -294,6 +299,16 @@ export default async function CompanyDetailPage({ params }: PageProps) {
               </CardContent>
             </Card>
           )}
+
+          {/* Company Documents Manager */}
+          <CompanyDocumentManager
+            companyId={companyId}
+            canEdit={canEdit}
+            counterpartyCompanies={allCompanies.map((c: any) => ({
+              _id: c._id.toString(),
+              name: c.name,
+            }))}
+          />
         </div>
       </div>
     </div>

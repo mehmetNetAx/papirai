@@ -46,9 +46,12 @@ interface NewContractFormProps {
     counterparty: string,
     currency: string,
     contractValue: number,
+    counterpartyId?: string,
+    companyId?: string,
     variables?: Array<{ name: string; description: string }>
   ) => Promise<void>;
   preselectedWorkspaceId?: string;
+  userCompanyId?: string;
 }
 
 export default function NewContractForm({
@@ -57,6 +60,7 @@ export default function NewContractForm({
   userName,
   onSave,
   preselectedWorkspaceId,
+  userCompanyId,
 }: NewContractFormProps) {
   const router = useRouter();
   const [title, setTitle] = useState('');
@@ -65,6 +69,11 @@ export default function NewContractForm({
   const [endDate, setEndDate] = useState('');
   const [contractType, setContractType] = useState('');
   const [counterparty, setCounterparty] = useState('');
+  const [counterpartyId, setCounterpartyId] = useState('');
+  const [counterpartyType, setCounterpartyType] = useState<'company' | 'manual'>('manual');
+  const [companyId, setCompanyId] = useState(userCompanyId || '');
+  const [companyType, setCompanyType] = useState<'company' | 'default'>('default');
+  const [companies, setCompanies] = useState<Array<{ _id: string; name: string }>>([]);
   const [currency, setCurrency] = useState('TRY');
   const [contractValue, setContractValue] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
@@ -108,6 +117,20 @@ export default function NewContractForm({
     { value: 'CHF', label: 'İsviçre Frangı (CHF)' },
   ];
   
+  // Fetch companies for counterparty selection
+  useEffect(() => {
+    fetch('/api/companies')
+      .then((res) => res.json())
+      .then((data) => {
+        const companyList = (data.companies || []).map((c: any) => ({
+          _id: c._id.toString(),
+          name: c.name,
+        }));
+        setCompanies(companyList);
+      })
+      .catch((err) => console.error('Error fetching companies:', err));
+  }, []);
+
   // Update workspaceId from preselectedWorkspaceId or cookie
   useEffect(() => {
     // Priority: preselectedWorkspaceId (from URL) > cookie > empty
@@ -159,7 +182,11 @@ export default function NewContractForm({
       return;
     }
 
-    if (!counterparty.trim()) {
+    if (counterpartyType === 'company' && !counterpartyId) {
+      setError('Lütfen bir şirket seçin');
+      return;
+    }
+    if (counterpartyType === 'manual' && !counterparty.trim()) {
       setError('Karşı taraf bilgisi gereklidir');
       return;
     }
@@ -205,6 +232,8 @@ export default function NewContractForm({
         counterparty,
         currency,
         contractValueNum,
+        counterpartyId || undefined,
+        companyType === 'company' ? companyId : undefined,
         aiVariables.length > 0 ? aiVariables : undefined
       );
       // onSave will redirect, so we don't need to do anything here
@@ -495,14 +524,111 @@ export default function NewContractForm({
           </div>
           
           <div className="space-y-2">
+            <Label htmlFor="company">Bizim Şirket</Label>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={companyType === 'default' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    setCompanyType('default');
+                    setCompanyId(userCompanyId || '');
+                  }}
+                >
+                  Varsayılan
+                </Button>
+                <Button
+                  type="button"
+                  variant={companyType === 'company' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    setCompanyType('company');
+                  }}
+                >
+                  Şirket Seç
+                </Button>
+              </div>
+              {companyType === 'company' && (
+                <Select
+                  value={companyId}
+                  onValueChange={setCompanyId}
+                >
+                  <SelectTrigger id="company">
+                    <SelectValue placeholder="Şirket seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies.map((company) => (
+                      <SelectItem key={company._id} value={company._id}>
+                        {company.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="counterparty">Karşı Taraf *</Label>
-            <Input
-              id="counterparty"
-              placeholder="Örn: ABC Şirketi, Ahmet Yılmaz"
-              value={counterparty}
-              onChange={(e) => setCounterparty(e.target.value)}
-              required
-            />
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={counterpartyType === 'company' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    setCounterpartyType('company');
+                    setCounterparty('');
+                  }}
+                >
+                  Şirket Seç
+                </Button>
+                <Button
+                  type="button"
+                  variant={counterpartyType === 'manual' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    setCounterpartyType('manual');
+                    setCounterpartyId('');
+                  }}
+                >
+                  Manuel Gir
+                </Button>
+              </div>
+              {counterpartyType === 'company' ? (
+                <Select
+                  value={counterpartyId}
+                  onValueChange={(value) => {
+                    setCounterpartyId(value);
+                    const selectedCompany = companies.find(c => c._id === value);
+                    if (selectedCompany) {
+                      setCounterparty(selectedCompany.name);
+                    }
+                  }}
+                  required
+                >
+                  <SelectTrigger id="counterparty">
+                    <SelectValue placeholder="Şirket seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies.map((company) => (
+                      <SelectItem key={company._id} value={company._id}>
+                        {company.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="counterparty"
+                  placeholder="Örn: ABC Şirketi, Ahmet Yılmaz"
+                  value={counterparty}
+                  onChange={(e) => setCounterparty(e.target.value)}
+                  required
+                />
+              )}
+            </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -561,7 +687,8 @@ export default function NewContractForm({
                 !startDate || 
                 !endDate || 
                 !contractType || 
-                !counterparty.trim() || 
+                (counterpartyType === 'manual' && !counterparty.trim()) ||
+              (counterpartyType === 'company' && !counterpartyId) || 
                 !currency || 
                 contractValue === '' || 
                 (!editorContent || editorContent.trim() === '' || editorContent === '<p></p>')

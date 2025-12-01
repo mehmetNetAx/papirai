@@ -2,10 +2,10 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface INotification extends Document {
   userId: mongoose.Types.ObjectId;
-  type: 'approval_request' | 'approval_decision' | 'signature_request' | 'signature_completed' | 'compliance_alert' | 'contract_expiring' | 'contract_expired' | 'deadline_approaching' | 'deadline_missed' | 'system' | 'contract_assigned' | 'contract_updated' | 'contract_alert';
+  type: 'approval_request' | 'approval_decision' | 'signature_request' | 'signature_completed' | 'compliance_alert' | 'contract_expiring' | 'contract_expired' | 'deadline_approaching' | 'deadline_missed' | 'system' | 'contract_assigned' | 'contract_updated' | 'contract_alert' | 'document_expired' | 'document_expiring' | 'contract_document_expired' | 'contract_document_expiring';
   message: string;
   read: boolean;
-  relatedResourceType?: 'contract' | 'approval' | 'signature' | 'compliance';
+  relatedResourceType?: 'contract' | 'approval' | 'signature' | 'compliance' | 'document';
   relatedResourceId?: mongoose.Types.ObjectId;
   metadata?: Record<string, any>;
   emailSent?: boolean;
@@ -24,7 +24,7 @@ const NotificationSchema = new Schema<INotification>(
     },
     type: {
       type: String,
-      enum: ['approval_request', 'approval_decision', 'signature_request', 'signature_completed', 'compliance_alert', 'contract_expiring', 'contract_expired', 'deadline_approaching', 'deadline_missed', 'system', 'contract_assigned', 'contract_updated', 'contract_alert'],
+      enum: ['approval_request', 'approval_decision', 'signature_request', 'signature_completed', 'compliance_alert', 'contract_expiring', 'contract_expired', 'deadline_approaching', 'deadline_missed', 'system', 'contract_assigned', 'contract_updated', 'contract_alert', 'document_expired', 'document_expiring', 'contract_document_expired', 'contract_document_expiring'],
       required: true,
       index: true,
     },
@@ -39,7 +39,7 @@ const NotificationSchema = new Schema<INotification>(
     },
     relatedResourceType: {
       type: String,
-      enum: ['contract', 'approval', 'signature', 'compliance'],
+      enum: ['contract', 'approval', 'signature', 'compliance', 'document'],
     },
     relatedResourceId: {
       type: Schema.Types.ObjectId,

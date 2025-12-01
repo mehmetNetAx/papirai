@@ -43,11 +43,20 @@ export async function GET(
         );
       }
 
+      // Extract companyId and workspaceId properly (handle both ObjectId and populated objects)
+      const contractCompanyId = contract.companyId instanceof mongoose.Types.ObjectId
+        ? contract.companyId
+        : (contract.companyId as any)?._id || contract.companyId;
+      
+      const contractWorkspaceId = contract.workspaceId instanceof mongoose.Types.ObjectId
+        ? contract.workspaceId
+        : (contract.workspaceId as any)?._id || contract.workspaceId;
+
       // Check access using canViewContract
       const canView = await canViewContract(
         user,
-        contract.companyId,
-        contract.workspaceId,
+        contractCompanyId,
+        contractWorkspaceId,
         contract.createdBy?.toString(),
         contract.allowedEditors,
         contract.assignedUsers,
@@ -62,10 +71,11 @@ export async function GET(
       }
 
       return NextResponse.json({ contract });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching contract:', error);
+      console.error('Error stack:', error.stack);
       return NextResponse.json(
-        { error: 'Failed to fetch contract' },
+        { error: error.message || 'Failed to fetch contract' },
         { status: 500 }
       );
     }

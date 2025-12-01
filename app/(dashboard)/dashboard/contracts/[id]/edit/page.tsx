@@ -11,6 +11,7 @@ import mongoose from 'mongoose';
 import { canEditContract } from '@/lib/utils/permissions';
 import { getMasterVariables } from '@/lib/services/master-variables';
 import MasterVariablesEditor from '@/components/contracts/MasterVariablesEditor';
+import ContractDocumentsManager from '@/components/contracts/ContractDocumentsManager';
 
 export default async function EditContractPage({
   params,
@@ -156,6 +157,15 @@ export default async function EditContractPage({
         <MasterVariablesEditor
           contractId={id}
           initialData={masterVariablesData}
+        />
+
+        {/* Documents Manager (includes both archive and direct uploads) */}
+        <ContractDocumentsManager
+          contractId={id}
+          companyId={contract.companyId.toString()}
+          counterpartyCompanyId={contract.counterpartyId ? (contract.counterpartyId instanceof mongoose.Types.ObjectId ? contract.counterpartyId.toString() : (contract.counterpartyId as any)?._id?.toString() || String(contract.counterpartyId)) : undefined}
+          counterpartyName={contract.counterparty}
+          canEdit={true}
         />
 
         <AdvancedContractEditor

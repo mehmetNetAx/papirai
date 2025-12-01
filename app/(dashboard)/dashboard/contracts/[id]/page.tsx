@@ -13,7 +13,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import mongoose from 'mongoose';
 import ExportPDFButton from './ExportPDFButton';
 import CreateComplianceCheckButton from './CreateComplianceCheckButton';
@@ -23,6 +23,8 @@ import MasterVariablesManager from '@/components/contracts/MasterVariablesManage
 import ArchiveContractButton from '@/components/contracts/ArchiveContractButton';
 import ContractStatusManager from '@/components/contracts/ContractStatusManager';
 import ContractUserAssignment from '@/components/contracts/ContractUserAssignment';
+import ContractDocumentsManager from '@/components/contracts/ContractDocumentsManager';
+import { canEditContract } from '@/lib/utils/permissions';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -113,6 +115,20 @@ export default async function ContractDetailPage({ params }: PageProps) {
   if (!hasAccess) {
     redirect('/dashboard/contracts');
   }
+
+  // Check edit permission
+  const user = {
+    id: session.user.id,
+    role: session.user.role,
+    companyId: session.user.companyId,
+    groupId: (session.user as any).groupId,
+  };
+  const canEdit = canEditContract(
+    user,
+    (contract.companyId as any)._id,
+    (contract.createdBy as any)?._id?.toString(),
+    contract.allowedEditors
+  );
 
   // Fetch related data
   const [versions, approvals, signatures, variables, complianceChecks, analysis] = await Promise.all([
@@ -218,92 +234,144 @@ export default async function ContractDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        <div className="space-y-6">
-          {/* Contract Preview - Always visible with radio buttons */}
-          <ContractPreview 
-            content={contract.content}
-            variables={variables.map((v: any) => ({
-              name: v.name,
-              value: v.value,
-              type: v.type,
-            }))}
-          />
+        {/* Tabs for organized content */}
+        <Tabs defaultValue="contract" className="w-full">
+          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-10 mb-6 h-auto p-1">
+            <TabsTrigger value="contract" className="text-xs lg:text-sm">
+              <span className="material-symbols-outlined text-base mr-1">description</span>
+              <span className="hidden sm:inline">Sözleşme</span>
+            </TabsTrigger>
+            <TabsTrigger value="documents" className="text-xs lg:text-sm">
+              <span className="material-symbols-outlined text-base mr-1">folder</span>
+              <span className="hidden sm:inline">Dokümanlar</span>
+            </TabsTrigger>
+            <TabsTrigger value="master" className="text-xs lg:text-sm">
+              <span className="material-symbols-outlined text-base mr-1">star</span>
+              <span className="hidden sm:inline">Master</span>
+            </TabsTrigger>
+            <TabsTrigger value="variables" className="text-xs lg:text-sm">
+              <span className="material-symbols-outlined text-base mr-1">tune</span>
+              <span className="hidden sm:inline">Değişkenler</span>
+            </TabsTrigger>
+            <TabsTrigger value="details" className="text-xs lg:text-sm">
+              <span className="material-symbols-outlined text-base mr-1">info</span>
+              <span className="hidden sm:inline">Detaylar</span>
+            </TabsTrigger>
+            <TabsTrigger value="versions" className="text-xs lg:text-sm">
+              <span className="material-symbols-outlined text-base mr-1">history</span>
+              <span className="hidden sm:inline">Versiyonlar</span>
+            </TabsTrigger>
+            <TabsTrigger value="approvals" className="text-xs lg:text-sm">
+              <span className="material-symbols-outlined text-base mr-1">check_circle</span>
+              <span className="hidden sm:inline">Onaylar</span>
+            </TabsTrigger>
+            <TabsTrigger value="signatures" className="text-xs lg:text-sm">
+              <span className="material-symbols-outlined text-base mr-1">draw</span>
+              <span className="hidden sm:inline">İmzalar</span>
+            </TabsTrigger>
+            <TabsTrigger value="compliance" className="text-xs lg:text-sm">
+              <span className="material-symbols-outlined text-base mr-1">verified</span>
+              <span className="hidden sm:inline">Uyum</span>
+            </TabsTrigger>
+            <TabsTrigger value="analysis" className="text-xs lg:text-sm">
+              <span className="material-symbols-outlined text-base mr-1">analytics</span>
+              <span className="hidden sm:inline">Analiz</span>
+            </TabsTrigger>
+          </TabsList>
 
-          {/* Master Variables - Always visible */}
-          <MasterVariablesManager
-            contractId={id}
-            variables={variables.map((v: any) => ({
-              _id: v._id.toString(),
-              name: v.name,
-              value: v.value,
-              type: v.type,
-              masterType: v.masterType,
-              isMaster: v.isMaster || false,
-            }))}
-          />
+          {/* Contract Tab */}
+          <TabsContent value="contract" className="space-y-6 mt-0">
+            <ContractPreview 
+              content={contract.content}
+              variables={variables.map((v: any) => ({
+                name: v.name,
+                value: v.value,
+                type: v.type,
+              }))}
+            />
+            <ContractUserAssignment contractId={id} />
+          </TabsContent>
 
-          {/* User Assignment - Always visible */}
-          <ContractUserAssignment contractId={id} />
+          {/* Documents Tab */}
+          <TabsContent value="documents" className="space-y-6 mt-0">
+            <ContractDocumentsManager
+              contractId={id}
+              companyId={(contract.companyId as any)?._id?.toString() || (contract.companyId as any).toString()}
+              counterpartyCompanyId={contract.counterpartyId ? (contract.counterpartyId instanceof mongoose.Types.ObjectId ? contract.counterpartyId.toString() : (contract.counterpartyId as any)?._id?.toString() || String(contract.counterpartyId)) : undefined}
+              counterpartyName={contract.counterparty}
+              canEdit={canEdit}
+            />
+          </TabsContent>
 
-          {/* Accordion for other sections */}
-          <Accordion type="multiple" className="w-full space-y-4">
-            {/* Variables */}
+          {/* Master Variables Tab */}
+          <TabsContent value="master" className="space-y-6 mt-0">
+            <MasterVariablesManager
+              contractId={id}
+              variables={variables.map((v: any) => ({
+                _id: v._id.toString(),
+                name: v.name,
+                value: v.value,
+                type: v.type,
+                masterType: v.masterType,
+                isMaster: v.isMaster || false,
+              }))}
+            />
+          </TabsContent>
+
+          {/* Variables Tab */}
+          <TabsContent value="variables" className="space-y-6 mt-0">
             {variables.length > 0 && (
               <Card className="border border-gray-200/80 dark:border-[#324d67]/50 bg-white dark:bg-[#192633] shadow-sm rounded-xl">
-                <AccordionItem value="variables" className="border-none">
-                  <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                    <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white font-display">
-                      Değişkenler ({variables.length})
-                    </CardTitle>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <CardContent className="pt-0">
-                      <div className="space-y-3">
-                        {variables.map((variable: any) => (
-                          <div
-                            key={variable._id.toString()}
-                            className="flex items-center justify-between p-3 rounded-lg border border-gray-200/50 dark:border-[#324d67]/50"
-                          >
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <p className="font-medium text-gray-900 dark:text-white font-display">
-                                  {variable.name}
-                                </p>
-                                {variable.isMaster && (
-                                  <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">
-                                    Master
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-sm text-gray-500 dark:text-gray-400">
-                                {variable.type} • {variable.taggedText || 'Değer yok'}
-                                {variable.masterType && ` • ${variable.masterType}`}
-                              </p>
-                            </div>
-                            <span className="text-sm font-medium text-primary">
-                              {variable.value instanceof Date 
-                                ? new Date(variable.value).toLocaleDateString('tr-TR')
-                                : variable.value || 'N/A'}
-                            </span>
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white font-display">
+                    Tüm Değişkenler ({variables.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {variables.map((variable: any) => (
+                      <div
+                        key={variable._id.toString()}
+                        className="flex items-center justify-between p-3 rounded-lg border border-gray-200/50 dark:border-[#324d67]/50"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-gray-900 dark:text-white font-display">
+                              {variable.name}
+                            </p>
+                            {variable.isMaster && (
+                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">
+                                Master
+                              </span>
+                            )}
                           </div>
-                        ))}
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {variable.type} • {variable.taggedText || 'Değer yok'}
+                            {variable.masterType && ` • ${variable.masterType}`}
+                          </p>
+                        </div>
+                        <span className="text-sm font-medium text-primary">
+                          {variable.value instanceof Date 
+                            ? new Date(variable.value).toLocaleDateString('tr-TR')
+                            : variable.value || 'N/A'}
+                        </span>
                       </div>
-                    </CardContent>
-                  </AccordionContent>
-                </AccordionItem>
+                    ))}
+                  </div>
+                </CardContent>
               </Card>
             )}
+          </TabsContent>
 
-            {/* Contract Details */}
+          {/* Details Tab */}
+          <TabsContent value="details" className="space-y-6 mt-0">
             <Card className="border border-gray-200/80 dark:border-[#324d67]/50 bg-white dark:bg-[#192633] shadow-sm rounded-xl">
-              <AccordionItem value="details" className="border-none">
-                <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                  <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white font-display">
-                    Sözleşme Detayları
-                  </CardTitle>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <CardContent className="pt-0 space-y-4">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white font-display">
+                  Sözleşme Detayları
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                     <div>
                       <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Çalışma Alanı</p>
                       <p className="text-sm text-gray-900 dark:text-white">
@@ -393,21 +461,19 @@ export default async function ContractDetailPage({ params }: PageProps) {
                         </div>
                       </div>
                     )}
-                  </CardContent>
-                </AccordionContent>
-              </AccordionItem>
+              </CardContent>
             </Card>
+          </TabsContent>
 
-            {/* Versions */}
+          {/* Versions Tab */}
+          <TabsContent value="versions" className="space-y-6 mt-0">
             <Card className="border border-gray-200/80 dark:border-[#324d67]/50 bg-white dark:bg-[#192633] shadow-sm rounded-xl">
-              <AccordionItem value="versions" className="border-none">
-                <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                  <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white font-display">
-                    Versiyonlar ({versions.length})
-                  </CardTitle>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <CardContent className="pt-0">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white font-display">
+                  Versiyonlar ({versions.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                     {versions.length > 0 ? (
                       <>
                         <div className="space-y-2">
@@ -456,22 +522,20 @@ export default async function ContractDetailPage({ params }: PageProps) {
                         Henüz versiyon bulunmuyor
                       </p>
                     )}
-                  </CardContent>
-                </AccordionContent>
-              </AccordionItem>
+              </CardContent>
             </Card>
+          </TabsContent>
 
-            {/* Approvals */}
-            {approvals.length > 0 && (
+          {/* Approvals Tab */}
+          <TabsContent value="approvals" className="space-y-6 mt-0">
+            {approvals.length > 0 ? (
               <Card className="border border-gray-200/80 dark:border-[#324d67]/50 bg-white dark:bg-[#192633] shadow-sm rounded-xl">
-                <AccordionItem value="approvals" className="border-none">
-                  <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                    <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white font-display">
-                      Onaylar ({approvals.length})
-                    </CardTitle>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <CardContent className="pt-0">
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white font-display">
+                    Onaylar ({approvals.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
                       <div className="space-y-2">
                         {approvals.slice(0, 5).map((approval: any) => (
                           <div
@@ -500,23 +564,27 @@ export default async function ContractDetailPage({ params }: PageProps) {
                           </div>
                         ))}
                       </div>
-                    </CardContent>
-                  </AccordionContent>
-                </AccordionItem>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="border border-gray-200/80 dark:border-[#324d67]/50 bg-white dark:bg-[#192633] shadow-sm rounded-xl">
+                <CardContent className="pt-6">
+                  <p className="text-center text-gray-500 dark:text-gray-400">Henüz onay bulunmuyor</p>
+                </CardContent>
               </Card>
             )}
+          </TabsContent>
 
-            {/* Signatures */}
-            {signatures.length > 0 && (
+          {/* Signatures Tab */}
+          <TabsContent value="signatures" className="space-y-6 mt-0">
+            {signatures.length > 0 ? (
               <Card className="border border-gray-200/80 dark:border-[#324d67]/50 bg-white dark:bg-[#192633] shadow-sm rounded-xl">
-                <AccordionItem value="signatures" className="border-none">
-                  <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                    <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white font-display">
-                      İmzalar ({signatures.length})
-                    </CardTitle>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <CardContent className="pt-0">
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white font-display">
+                    İmzalar ({signatures.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
                       <div className="space-y-2">
                         {signatures.map((signature: any) => (
                           <div
@@ -545,23 +613,27 @@ export default async function ContractDetailPage({ params }: PageProps) {
                           </div>
                         ))}
                       </div>
-                    </CardContent>
-                  </AccordionContent>
-                </AccordionItem>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="border border-gray-200/80 dark:border-[#324d67]/50 bg-white dark:bg-[#192633] shadow-sm rounded-xl">
+                <CardContent className="pt-6">
+                  <p className="text-center text-gray-500 dark:text-gray-400">Henüz imza bulunmuyor</p>
+                </CardContent>
               </Card>
             )}
+          </TabsContent>
 
-            {/* Compliance Checks */}
-            {complianceChecks.length > 0 && (
+          {/* Compliance Tab */}
+          <TabsContent value="compliance" className="space-y-6 mt-0">
+            {complianceChecks.length > 0 ? (
               <Card className="border border-gray-200/80 dark:border-[#324d67]/50 bg-white dark:bg-[#192633] shadow-sm rounded-xl">
-                <AccordionItem value="compliance" className="border-none">
-                  <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                    <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white font-display">
-                      Uyum Kontrolleri ({complianceChecks.length})
-                    </CardTitle>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <CardContent className="pt-0">
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white font-display">
+                    Uyum Kontrolleri ({complianceChecks.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
                       <div className="space-y-3">
                         {complianceChecks.map((check: any) => (
                           <div
@@ -592,33 +664,37 @@ export default async function ContractDetailPage({ params }: PageProps) {
                           </div>
                         ))}
                       </div>
-                    </CardContent>
-                  </AccordionContent>
-                </AccordionItem>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="border border-gray-200/80 dark:border-[#324d67]/50 bg-white dark:bg-[#192633] shadow-sm rounded-xl">
+                <CardContent className="pt-6">
+                  <p className="text-center text-gray-500 dark:text-gray-400">Henüz uyum kontrolü bulunmuyor</p>
+                </CardContent>
               </Card>
             )}
+          </TabsContent>
 
-            {/* Contract Analysis */}
+          {/* Analysis Tab */}
+          <TabsContent value="analysis" className="space-y-6 mt-0">
             <Card className="border border-gray-200/80 dark:border-[#324d67]/50 bg-white dark:bg-[#192633] shadow-sm rounded-xl">
-              <AccordionItem value="analysis" className="border-none">
-                <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                  <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white font-display">
-                    Sözleşme Analizi
-                    {analysis && (
-                      <span className={`ml-3 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                        analysis.overallScore >= 80
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300'
-                          : analysis.overallScore >= 60
-                          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300'
-                          : 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300'
-                      }`}>
-                        {Math.round(analysis.overallScore)}/100
-                      </span>
-                    )}
-                  </CardTitle>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <CardContent className="pt-0">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white font-display">
+                  Sözleşme Analizi
+                  {analysis && (
+                    <span className={`ml-3 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      analysis.overallScore >= 80
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300'
+                        : analysis.overallScore >= 60
+                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300'
+                        : 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300'
+                    }`}>
+                      {Math.round(analysis.overallScore)}/100
+                    </span>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                     {analysis && analysis.status === 'completed' ? (
                       <div className="space-y-4">
                         {/* Overall Score */}
@@ -752,12 +828,10 @@ export default async function ContractDetailPage({ params }: PageProps) {
                         </Button>
                       </div>
                     )}
-                  </CardContent>
-                </AccordionContent>
-              </AccordionItem>
+              </CardContent>
             </Card>
-          </Accordion>
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
