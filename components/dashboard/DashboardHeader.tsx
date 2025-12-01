@@ -22,6 +22,7 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
   const navItems = [
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/dashboard/contracts', label: 'Sözleşmeler' },
+    { href: '/dashboard/documents', label: 'Dokümanlar' },
     { href: '/dashboard/organizations', label: 'Organizasyonlar' },
     { href: '/dashboard/reports', label: 'Raporlar' },
   ];

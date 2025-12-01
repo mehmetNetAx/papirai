@@ -101,6 +101,15 @@ const reportTypes: ReportType[] = [
     color: 'text-gray-600 dark:text-gray-400',
     bgColor: 'bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800',
   },
+  {
+    id: 'documents',
+    title: 'Doküman Raporu',
+    description: 'Doküman geçerlilik durumları, süresi dolmuş ve yakında geçecek dokümanlar',
+    icon: <FileText className="w-8 h-8" />,
+    href: '/dashboard/reports/documents',
+    color: 'text-cyan-600 dark:text-cyan-400',
+    bgColor: 'bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800',
+  },
 ];
 
 interface QuickStats {
