@@ -23,6 +23,7 @@ import {
 import Link from 'next/link';
 import { checkDateStatus, DateStatus } from '@/lib/utils/date-status';
 import ArchiveContractButton from '@/components/contracts/ArchiveContractButton';
+import HelpButton from '@/components/help/HelpButton';
 
 interface Contract {
   _id: string;
@@ -246,13 +247,16 @@ export default function ContractsPage() {
       <div className="max-w-7xl mx-auto">
         {/* Page Header */}
         <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white font-display leading-tight tracking-tight">
-              Sözleşmeler
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2 text-base font-normal">
-              Sözleşmelerinizi yönetin ve takip edin
-            </p>
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-4xl font-bold text-gray-900 dark:text-white font-display leading-tight tracking-tight">
+                Sözleşmeler
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-2 text-base font-normal">
+                Sözleşmelerinizi yönetin ve takip edin
+              </p>
+            </div>
+            <HelpButton module="contracts" />
           </div>
           <Button asChild className="button button-egg-blue">
             <Link href="/dashboard/contracts/new">Yeni Sözleşme</Link>

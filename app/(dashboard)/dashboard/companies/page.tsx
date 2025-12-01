@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import CompanyCard from '@/components/companies/CompanyCard';
+import HelpButton from '@/components/help/HelpButton';
 
 export default async function CompaniesPage() {
   const session = await getServerSession(authOptions);
@@ -116,10 +117,15 @@ export default async function CompaniesPage() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <div className="flex-1 min-w-0">
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white font-display leading-tight tracking-tight">Şirketler</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2 text-base font-normal">
-              Organizasyon şeması ve şirket hiyerarşisi
-            </p>
+            <div className="flex items-center gap-4">
+              <div>
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white font-display leading-tight tracking-tight">Şirketler</h1>
+                <p className="text-gray-600 dark:text-gray-400 mt-2 text-base font-normal">
+                  Organizasyon şeması ve şirket hiyerarşisi
+                </p>
+              </div>
+              <HelpButton module="companies" />
+            </div>
           </div>
           {userRole === 'system_admin' && (
             <Button asChild className="button button-egg-blue">

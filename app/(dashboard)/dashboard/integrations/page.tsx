@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import IntegrationActionsMenu from '@/components/integrations/IntegrationActionsMenu';
 import mongoose from 'mongoose';
+import HelpButton from '@/components/help/HelpButton';
 
 function getIntegrationTypeLabel(type: string): string {
   const typeMap: Record<string, string> = {
@@ -76,11 +77,14 @@ export default async function IntegrationsPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white font-display leading-tight tracking-tight">Entegrasyonlar</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2 text-base font-normal">
-              ERP sistemleri ile entegrasyonları yönetin ve compliance kontrollerini çalıştırın
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-4xl font-bold text-gray-900 dark:text-white font-display leading-tight tracking-tight">Entegrasyonlar</h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-2 text-base font-normal">
+                ERP sistemleri ile entegrasyonları yönetin ve compliance kontrollerini çalıştırın
+              </p>
+            </div>
+            <HelpButton module="integrations" />
           </div>
           {['system_admin', 'group_admin', 'company_admin'].includes(session.user.role) && (
             <Button asChild className="button button-egg-blue">

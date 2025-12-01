@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import ComplianceFilterDropdown from '@/components/compliance/ComplianceFilterDropdown';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import mongoose from 'mongoose';
+import HelpButton from '@/components/help/HelpButton';
 
 interface PageProps {
   searchParams: Promise<{
@@ -157,11 +158,14 @@ export default async function CompliancePage({ searchParams }: PageProps) {
       <div className="max-w-7xl mx-auto">
         {/* Page Heading */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-          <div className="flex flex-col gap-1">
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white font-display leading-tight tracking-tight">Uyum Yönetimi</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2 text-base font-normal">
-              Sözleşmelerinizin uyum durumunu izleyin ve yönetin.
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-1">
+              <h1 className="text-4xl font-bold text-gray-900 dark:text-white font-display leading-tight tracking-tight">Uyum Yönetimi</h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-2 text-base font-normal">
+                Sözleşmelerinizin uyum durumunu izleyin ve yönetin.
+              </p>
+            </div>
+            <HelpButton module="compliance" />
           </div>
         </div>
 

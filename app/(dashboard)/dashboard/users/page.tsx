@@ -15,6 +15,7 @@ import UserSearchForm from '@/components/users/UserSearchForm';
 import UserFilterDropdown from '@/components/users/UserFilterDropdown';
 import UserActionsMenu from '@/components/users/UserActionsMenu';
 import mongoose from 'mongoose';
+import HelpButton from '@/components/help/HelpButton';
 
 interface PageProps {
   searchParams: Promise<{ 
@@ -179,13 +180,16 @@ export default async function UsersPage({ searchParams }: PageProps) {
         <div className="mx-auto max-w-7xl">
           {/* Page Heading */}
           <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-            <div className="flex flex-col gap-1">
-              <p className="text-gray-900 dark:text-white text-3xl font-bold leading-tight tracking-tight">
-                Kullanıcı Yönetimi
-              </p>
-              <p className="text-gray-500 dark:text-[#92adc9] text-base font-normal leading-normal">
-                Organizasyonunuzdaki kullanıcıları, rollerini ve izinlerini yönetin.
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-1">
+                <p className="text-gray-900 dark:text-white text-3xl font-bold leading-tight tracking-tight">
+                  Kullanıcı Yönetimi
+                </p>
+                <p className="text-gray-500 dark:text-[#92adc9] text-base font-normal leading-normal">
+                  Organizasyonunuzdaki kullanıcıları, rollerini ve izinlerini yönetin.
+                </p>
+              </div>
+              <HelpButton module="users" />
             </div>
             <Link href="/dashboard/users/invite">
               <Button className="flex items-center justify-center gap-2 overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-wide shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-background-dark">

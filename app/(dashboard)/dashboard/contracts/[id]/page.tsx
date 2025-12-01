@@ -25,6 +25,7 @@ import ContractStatusManager from '@/components/contracts/ContractStatusManager'
 import ContractUserAssignment from '@/components/contracts/ContractUserAssignment';
 import ContractDocumentsManager from '@/components/contracts/ContractDocumentsManager';
 import { canEditContract } from '@/lib/utils/permissions';
+import HelpButton from '@/components/help/HelpButton';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -194,6 +195,7 @@ export default async function ContractDetailPage({ params }: PageProps) {
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white truncate">
                 {contract.title}
               </h1>
+              <HelpButton module="contracts" />
             </div>
             <div className="flex items-center gap-3 flex-wrap">
               <ContractStatusManager

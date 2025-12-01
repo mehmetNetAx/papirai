@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import mongoose from 'mongoose';
 import NewContractForm from './NewContractForm';
+import HelpButton from '@/components/help/HelpButton';
 import { getSelectedWorkspaceIdFromRequest } from '@/lib/utils/context-cookie';
 import { headers } from 'next/headers';
 
@@ -259,6 +260,7 @@ export default async function NewContractPage({ searchParams }: PageProps) {
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white truncate">
                 Yeni Sözleşme
               </h1>
+              <HelpButton module="contracts" />
             </div>
             <p className="text-gray-600 dark:text-gray-400">Yeni bir sözleşme oluşturun</p>
           </div>

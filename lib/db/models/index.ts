@@ -13,6 +13,7 @@ export { default as ComplianceCheck } from './ComplianceCheck';
 export { default as AuditLog } from './AuditLog';
 export { default as Notification } from './Notification';
 export { default as ContractAnalysis } from './ContractAnalysis';
+export { default as HelpDocument } from './HelpDocument';
 
 // Type exports
 export type { IUser } from './User';
@@ -29,4 +30,5 @@ export type { IComplianceCheck } from './ComplianceCheck';
 export type { IAuditLog } from './AuditLog';
 export type { INotification } from './Notification';
 export type { IContractAnalysis, ICriterion, ISubCriterion } from './ContractAnalysis';
+export type { IHelpDocument } from './HelpDocument';
 

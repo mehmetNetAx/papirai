@@ -16,6 +16,7 @@ import DashboardMetrics from './DashboardMetrics';
 import DeadlineChecker from '@/components/contracts/DeadlineChecker';
 import { getContractsNeedingAttention } from '@/lib/services/master-variables';
 import { buildReportFilters } from '@/lib/utils/report-filters';
+import HelpButton from '@/components/help/HelpButton';
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -217,9 +218,12 @@ export default async function DashboardPage() {
     <div className="p-6 lg:p-10 space-y-8 bg-background-light dark:bg-background-dark min-h-screen">
       <div className="max-w-7xl mx-auto">
         {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white font-display leading-tight tracking-tight">Dashboard</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2 text-base font-normal">Hoş geldiniz, {session.user.name}</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white font-display leading-tight tracking-tight">Dashboard</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2 text-base font-normal">Hoş geldiniz, {session.user.name}</p>
+          </div>
+          <HelpButton module="dashboard" />
         </div>
 
         {/* Stats Cards */}

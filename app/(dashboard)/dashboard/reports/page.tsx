@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import HelpButton from '@/components/help/HelpButton';
 import {
   BarChart3,
   Calendar,
@@ -135,13 +136,16 @@ export default function ReportsPage() {
     <div className="p-6 lg:p-10 space-y-8 bg-background-light dark:bg-background-dark min-h-screen">
       <div className="max-w-7xl mx-auto">
         {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white font-display leading-tight tracking-tight">
-            Raporlar
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2 text-base font-normal">
-            Farklı kriterlere göre detaylı raporlar oluşturun ve analiz edin
-          </p>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white font-display leading-tight tracking-tight">
+              Raporlar
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2 text-base font-normal">
+              Farklı kriterlere göre detaylı raporlar oluşturun ve analiz edin
+            </p>
+          </div>
+          <HelpButton module="reports" />
         </div>
 
         {/* Report Types Grid */}
