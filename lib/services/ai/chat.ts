@@ -1,6 +1,5 @@
 import { getAIProvider } from './factory';
-import { vectorSearch, fallbackVectorSearch } from '@/lib/services/rag/vector-search';
-import { buildContractContext, buildContractContextWithContent, formatContextForPrompt } from '@/lib/services/rag/context-builder';
+import { buildContractContextWithContent, formatContextForPrompt } from '@/lib/services/rag/context-builder';
 import { ChatMessage, ChatOptions } from './base';
 import { aiConfig } from '@/lib/config/ai';
 import ContractChat from '@/lib/db/models/ContractChat';
@@ -11,7 +10,6 @@ export interface ChatRequest {
   userId: string;
   sessionId: string;
   message: string;
-  useRAG?: boolean;
 }
 
 export interface ChatResponse {
@@ -26,112 +24,111 @@ export interface ChatResponse {
 }
 
 /**
- * Generate chat response with RAG
+ * Generate chat response with contract content
  */
 export async function generateChatResponse(request: ChatRequest): Promise<ChatResponse> {
+  console.log(`\n\n[Chat] ==========================================`);
+  console.log(`[Chat] ===== GENERATE CHAT RESPONSE START =====`);
+  console.log(`[Chat] ContractId: ${request.contractId || 'NOT PROVIDED'}`);
+  console.log(`[Chat] UserId: ${request.userId}`);
+  console.log(`[Chat] SessionId: ${request.sessionId}`);
+  console.log(`[Chat] Message: ${request.message.substring(0, 100)}...`);
+  console.log(`[Chat] ==========================================\n\n`);
+  
   const provider = getAIProvider();
-  const useRAG = request.useRAG !== false; // Default to true
 
   let systemPrompt = 'Sen Türk hukuk sistemi için uzman bir sözleşme uzmanısın. Sözleşme detaylarını analiz edip sorulara profesyonel ve doğru cevaplar verirsin.';
   let contextText = '';
 
-  // If RAG is enabled and contractId is provided, retrieve relevant context
-  if (useRAG && request.contractId) {
+  // If contractId is provided, load contract content directly
+  if (request.contractId) {
     try {
-      // First, try to get contract content directly (primary fallback)
+      console.log(`[Chat] ===== START: Loading contract content for contractId: ${request.contractId} =====`);
       const Contract = (await import('@/lib/db/models/Contract')).default;
       const contract = await Contract.findById(request.contractId).lean();
       
-      if (!contract || !contract.content) {
-        console.warn(`[RAG] Contract ${request.contractId} not found or has no content`);
-      }
-
-      // Perform vector search
-      let searchResults: any[] = [];
-      let searchMethod = 'none';
-      
-      try {
-        console.log(`[RAG] Attempting vector search for contract ${request.contractId} with query: "${request.message}"`);
-        searchResults = await vectorSearch(request.message, request.contractId);
-        searchMethod = 'vector';
-        console.log(`[RAG] Vector search succeeded, found ${searchResults.length} results`);
-      } catch (error: any) {
-        // Fallback to cosine similarity if vector search is not available
-        console.warn('[RAG] Vector search failed, using fallback:', error.message || error);
+      if (!contract) {
+        console.error(`[Chat] ERROR: Contract ${request.contractId} not found in database`);
+      } else if (!contract.content) {
+        console.error(`[Chat] ERROR: Contract ${request.contractId} found but has no content field`);
+        console.log(`[Chat] Contract fields:`, Object.keys(contract));
+      } else {
+        console.log(`[Chat] ✓ Contract found: ${contract.title || 'No title'}`);
+        console.log(`[Chat] ✓ Contract content length: ${contract.content.length} characters`);
+        console.log(`[Chat] ✓ Contract content preview (first 500 chars): ${contract.content.substring(0, 500)}...`);
+        console.log(`[Chat] ✓ Contract content is JSON: ${contract.content.trim().startsWith('{') || contract.content.trim().startsWith('[')}`);
+        
+        // Build context from contract content
+        console.log(`[Chat] Building context from contract content...`);
         try {
-          searchResults = await fallbackVectorSearch(request.message, request.contractId);
-          searchMethod = 'fallback';
-          console.log(`[RAG] Fallback search succeeded, found ${searchResults.length} results`);
-        } catch (fallbackError: any) {
-          console.error('[RAG] Both vector search and fallback failed:', fallbackError.message || fallbackError);
-          searchResults = [];
+          const context = await buildContractContextWithContent(request.contractId, contract.content);
+          console.log(`[Chat] ✓ Context built successfully`);
+          console.log(`[Chat] Context metadata:`, {
+            title: context.contractMetadata.title,
+            contractType: context.contractMetadata.contractType,
+            chunksCount: context.relevantChunks.length,
+            firstChunkLength: context.relevantChunks[0]?.text?.length || 0,
+            firstChunkPreview: context.relevantChunks[0]?.text?.substring(0, 200) || 'NO TEXT',
+          });
+          
+          contextText = formatContextForPrompt(context);
+          console.log(`[Chat] ✓✓✓ Context formatted for prompt ✓✓✓`);
+          console.log(`[Chat] ✓ Formatted context length: ${contextText.length} characters`);
+          if (contextText.length === 0) {
+            console.error(`[Chat] ⚠⚠⚠ ERROR: Formatted context is EMPTY! ⚠⚠⚠`);
+          } else {
+            console.log(`[Chat] ✓ Formatted context preview (first 1000 chars):\n${contextText.substring(0, 1000)}...`);
+          }
+          
+          systemPrompt += '\n\nAşağıdaki sözleşme bilgileri ve tam içeriği sana sağlanmıştır. Soruları bu bilgilere dayanarak cevapla. Eğer sorunun cevabı sağlanan bilgilerde yoksa, bunu açıkça belirt.';
+          console.log(`[Chat] ✓ System prompt updated with context instruction`);
+        } catch (contextError: any) {
+          console.error(`[Chat] ⚠⚠⚠ ERROR building context: ${contextError.message} ⚠⚠⚠`);
+          console.error(`[Chat] Stack:`, contextError.stack);
+          throw contextError; // Re-throw to be caught by outer catch
         }
       }
-
-      // Build context - use search results if available, otherwise use full contract content
-      if (searchResults.length > 0) {
-        // Build context from search results
-        console.log(`[RAG] Building context from ${searchResults.length} search results`);
-        const context = await buildContractContext(request.contractId, searchResults);
-        contextText = formatContextForPrompt(context);
-        
-        console.log(`[RAG] Context built successfully (${contextText.length} characters)`);
-        systemPrompt += '\n\nAşağıdaki sözleşme bilgileri ve ilgili bölümler sana sağlanmıştır. Soruları bu bilgilere dayanarak cevapla. Eğer sorunun cevabı sağlanan bilgilerde yoksa, bunu açıkça belirt.';
-      } else {
-        // Don't load contract content here - it will be loaded on first message if needed
-        console.log(`[RAG] No search results found, contract content will be loaded on first message if needed`);
-        console.log(`[RAG] Search method used: ${searchMethod}`);
-      }
+      console.log(`[Chat] ===== END: Loading contract content =====`);
     } catch (error: any) {
-      console.error('[RAG] Error retrieving context for RAG:', error.message || error);
-      console.error('[RAG] Stack:', error.stack);
-      // Continue without context if RAG fails
+      console.error(`\n\n[Chat] ⚠⚠⚠ CRITICAL ERROR: Exception while loading contract content ⚠⚠⚠`);
+      console.error(`[Chat] Error message: ${error.message || error}`);
+      console.error(`[Chat] Error stack:`, error.stack);
+      console.error(`[Chat] ContractId was: ${request.contractId}`);
+      console.error(`[Chat] ⚠⚠⚠ Continuing WITHOUT contract context - THIS WILL CAUSE GENERIC RESPONSES ⚠⚠⚠\n\n`);
+      // Continue without context if loading fails
+      contextText = ''; // Ensure it's empty
     }
+  } else {
+    console.error(`\n\n[Chat] ⚠⚠⚠ WARNING: No contractId provided, chat will proceed without contract context ⚠⚠⚠\n\n`);
   }
+  
+  console.log(`[Chat] ===== AFTER CONTENT LOADING =====`);
+  console.log(`[Chat] ContextText length: ${contextText?.length || 0}`);
+  console.log(`[Chat] ContextText is empty: ${!contextText || contextText.length === 0}`);
+  console.log(`[Chat] =================================\n\n`);
 
   // Get chat history
   const chatHistory = await getChatHistory(request.sessionId);
-  const isFirstMessage = chatHistory.length === 0;
   const messages: ChatMessage[] = [];
 
-  // If this is the first message and we have contract content but no search results,
-  // load contract content into the system prompt (like summary does)
-  if (isFirstMessage && useRAG && request.contractId) {
-    try {
-      const Contract = (await import('@/lib/db/models/Contract')).default;
-      const contract = await Contract.findById(request.contractId).lean();
-      
-      if (contract && contract.content) {
-        // If we have search results, use them; otherwise use full content
-        if (!contextText) {
-          console.log(`[RAG] First message - loading full contract content (${contract.content.length} characters)`);
-          const context = await buildContractContextWithContent(request.contractId, contract.content);
-          contextText = formatContextForPrompt(context);
-          
-          console.log(`[RAG] Contract content loaded into system prompt (${contextText.length} characters)`);
-          systemPrompt += '\n\nAşağıdaki sözleşme bilgileri ve tam içeriği sana sağlanmıştır. Soruları bu bilgilere dayanarak cevapla. Eğer sorunun cevabı sağlanan bilgilerde yoksa, bunu açıkça belirt.';
-        } else {
-          console.log(`[RAG] First message - using search results context`);
-        }
-      } else {
-        console.warn(`[RAG] Contract ${request.contractId} has no content`);
-      }
-    } catch (error: any) {
-      console.error('[RAG] Error loading contract content for first message:', error.message || error);
-    }
-  }
-
-  // Add system prompt only if context is available (to avoid duplicate system prompts)
-  // If no context, system prompt will be handled by the provider
-  if (contextText) {
-    messages.push({
-      role: 'system',
-      content: systemPrompt + '\n\n' + contextText,
-    });
+  // Add system prompt (keep it short and focused)
+  const isFirstMessage = chatHistory.length === 0;
+  
+  // Don't add system message to messages array - it will be passed via systemPrompt in ChatOptions
+  // This is important for Gemini which uses systemInstruction
+  if (contextText && contextText.length > 0) {
+    console.log(`[Chat] ✓✓✓ Contract context available, will be passed via systemPrompt ✓✓✓`);
+    console.log(`[Chat] Contract context length: ${contextText.length} characters`);
+  } else {
+    console.error(`[Chat] ⚠⚠⚠ CRITICAL WARNING: No contract context available ⚠⚠⚠`);
+    console.error(`[Chat] Context text is empty or undefined!`);
+    console.error(`[Chat] ContractId was: ${request.contractId}`);
   }
 
   // Add chat history
-  chatHistory.forEach(msg => {
+  console.log(`[Chat] Chat history length: ${chatHistory.length} messages`);
+  chatHistory.forEach((msg, index) => {
+    console.log(`[Chat] History message ${index + 1}: ${msg.role} - ${msg.content.substring(0, 100)}...`);
     messages.push({
       role: msg.role,
       content: msg.content,
@@ -139,20 +136,39 @@ export async function generateChatResponse(request: ChatRequest): Promise<ChatRe
   });
 
   // Add current message
+  console.log(`[Chat] User message: ${request.message}`);
   messages.push({
     role: 'user',
     content: request.message,
   });
 
+  // Log final messages array
+  console.log(`[Chat] ===== FINAL MESSAGES ARRAY =====`);
+  console.log(`[Chat] Total messages: ${messages.length}`);
+  messages.forEach((msg, index) => {
+    const preview = msg.content.substring(0, 200);
+    console.log(`[Chat] Message ${index + 1} [${msg.role}]: ${preview}${msg.content.length > 200 ? '...' : ''} (${msg.content.length} chars)`);
+  });
+  console.log(`[Chat] ===== END FINAL MESSAGES ARRAY =====`);
+
   // Generate response
+  // For Gemini: pass contract content as systemPrompt so it goes to systemInstruction
   const chatOptions: ChatOptions = {
     messages,
-    systemPrompt: contextText ? undefined : systemPrompt, // Pass system prompt if no context
+    systemPrompt: contextText && contextText.length > 0 
+      ? `${systemPrompt}\n\nÖNEMLİ: Aşağıdaki sözleşme içeriği sana sağlanmıştır. TÜM sorulara SADECE bu sözleşmeye göre cevap ver:\n\n${contextText}`
+      : systemPrompt,
     temperature: 0.7,
     maxTokens: aiConfig.maxTokens,
   };
 
+  console.log(`[Chat] Calling AI provider with ${messages.length} messages...`);
+  if (contextText && contextText.length > 0) {
+    console.log(`[Chat] ✓✓✓ SystemPrompt includes contract content (${chatOptions.systemPrompt!.length} chars) ✓✓✓`);
+  }
   const response = await provider.generateChat(chatOptions);
+  console.log(`[Chat] ✓ AI response received (${response.content.length} characters)`);
+  console.log(`[Chat] AI response preview: ${response.content.substring(0, 200)}...`);
 
   // Save messages to chat history
   await saveChatMessage(request.sessionId, request.contractId, request.userId, {

@@ -23,7 +23,6 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/dashboard/contracts', label: 'Sözleşmeler' },
     { href: '/dashboard/documents', label: 'Dokümanlar' },
-    { href: '/dashboard/chat', label: 'AI Chat' },
     { href: '/dashboard/organizations', label: 'Organizasyonlar' },
     { href: '/dashboard/reports', label: 'Raporlar' },
   ];

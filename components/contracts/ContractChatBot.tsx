@@ -33,10 +33,9 @@ export default function ContractChatBot({ contractId, className }: ContractChatB
     loadChatHistory(newSessionId);
   }, [contractId]);
 
-  // Initialize chat with contract content on first load (if no history exists)
+  // Initialize chat with welcome message on first load (if no history exists)
   useEffect(() => {
     if (sessionId && messages.length === 0) {
-      // Check if this is a new session by trying to load contract content
       initializeChatWithContract();
     }
   }, [sessionId, messages.length]);
@@ -70,42 +69,13 @@ export default function ContractChatBot({ contractId, className }: ContractChatB
   };
 
   const initializeChatWithContract = async () => {
-    // Send a system message to initialize chat with contract content
-    // This will trigger the RAG system to load contract content on first message
-    // We don't actually send a message, just prepare the system
-    try {
-      // Check if embeddings exist
-      const embeddingResponse = await fetch(`/api/contracts/${contractId}/embeddings`);
-      const embeddingData = await embeddingResponse.ok ? await embeddingResponse.json() : { hasEmbeddings: false };
-      
-      // Show welcome message indicating contract is ready
-      if (embeddingData.hasEmbeddings) {
-        // Embeddings exist, vector search will be used
-        const welcomeMessage: Message = {
-          role: 'assistant',
-          content: 'Merhaba! Bu sözleşme hakkında sorularınızı yanıtlamaya hazırım. Sözleşme içeriği analiz edilmiş durumda. İstediğiniz soruyu sorabilirsiniz.\n\nÖrnek sorular:\n- Bu sözleşmenin özeti nedir?\n- Ödeme koşulları nelerdir?\n- Tarafların yükümlülükleri nelerdir?\n- Sözleşme ne zaman sona eriyor?',
-          timestamp: new Date(),
-        };
-        setMessages([welcomeMessage]);
-      } else {
-        // No embeddings, full content will be loaded on first message
-        const welcomeMessage: Message = {
-          role: 'assistant',
-          content: 'Merhaba! Bu sözleşme hakkında sorularınızı yanıtlamaya hazırım. İlk sorunuzda sözleşme içeriği yüklenecek ve sonrasında sorularınıza cevap verebilirim.\n\nÖrnek sorular:\n- Bu sözleşmenin özeti nedir?\n- Ödeme koşulları nelerdir?\n- Tarafların yükümlülükleri nelerdir?\n- Sözleşme ne zaman sona eriyor?',
-          timestamp: new Date(),
-        };
-        setMessages([welcomeMessage]);
-      }
-    } catch (err) {
-      console.error('Error initializing chat:', err);
-      // Show default welcome message
-      const welcomeMessage: Message = {
-        role: 'assistant',
-        content: 'Merhaba! Bu sözleşme hakkında sorularınızı yanıtlamaya hazırım. İstediğiniz soruyu sorabilirsiniz.',
-        timestamp: new Date(),
-      };
-      setMessages([welcomeMessage]);
-    }
+    // Show welcome message
+    const welcomeMessage: Message = {
+      role: 'assistant',
+      content: 'Merhaba! Bu sözleşme hakkında sorularınızı yanıtlamaya hazırım. İstediğiniz soruyu sorabilirsiniz.\n\nÖrnek sorular:\n- Bu sözleşmenin özeti nedir?\n- Ödeme koşulları nelerdir?\n- Tarafların yükümlülükleri nelerdir?\n- Sözleşme ne zaman sona eriyor?',
+      timestamp: new Date(),
+    };
+    setMessages([welcomeMessage]);
   };
 
   const handleSend = async () => {
@@ -131,7 +101,6 @@ export default function ContractChatBot({ contractId, className }: ContractChatB
         body: JSON.stringify({
           message: userMessage.content,
           sessionId,
-          useRAG: true,
         }),
       });
 
@@ -141,13 +110,6 @@ export default function ContractChatBot({ contractId, className }: ContractChatB
       }
 
       const data = await response.json();
-      
-      // Check if embeddings are required
-      if (data.requiresEmbeddings) {
-        setError('Bu sözleşme için embedding\'ler oluşturulmamış. Lütfen önce embedding\'leri oluşturun.');
-        setMessages((prev) => prev.slice(0, -1)); // Remove user message
-        return;
-      }
 
       const assistantMessage: Message = {
         role: 'assistant',

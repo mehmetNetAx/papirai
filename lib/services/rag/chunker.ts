@@ -12,32 +12,116 @@ export interface Chunk {
 }
 
 /**
+ * Extract text from TipTap JSON node recursively
+ */
+function extractTextFromTipTapNode(node: any): string {
+  if (!node || typeof node !== 'object') {
+    return '';
+  }
+
+  // If node has text property, return it
+  if (node.text) {
+    return node.text;
+  }
+
+  // If node has content array, process each child
+  if (node.content && Array.isArray(node.content)) {
+    const texts: string[] = [];
+    
+    for (const child of node.content) {
+      const childText = extractTextFromTipTapNode(child);
+      if (childText) {
+        texts.push(childText);
+      }
+    }
+
+    // Add line breaks for block-level nodes
+    const blockTypes = ['paragraph', 'heading', 'listItem', 'blockquote'];
+    if (blockTypes.includes(node.type)) {
+      return texts.join('\n');
+    }
+    
+    return texts.join('');
+  }
+
+  return '';
+}
+
+/**
+ * Convert TipTap JSON to plain text
+ */
+function tiptapJsonToText(jsonContent: string): string {
+  try {
+    // Try to parse as JSON
+    const json = typeof jsonContent === 'string' ? JSON.parse(jsonContent) : jsonContent;
+    
+    // Check if it's a TipTap JSON structure (has type: 'doc')
+    if (json && typeof json === 'object' && json.type === 'doc') {
+      console.log(`[htmlToText] Detected TipTap JSON format, extracting text...`);
+      const text = extractTextFromTipTapNode(json);
+      console.log(`[htmlToText] ✓ Extracted ${text.length} characters from TipTap JSON`);
+      return text;
+    }
+    
+    // If not TipTap JSON, return empty (will be handled as HTML)
+    return '';
+  } catch (error: any) {
+    console.warn(`[htmlToText] Failed to parse as TipTap JSON: ${error.message}`);
+    return '';
+  }
+}
+
+/**
  * Convert HTML content to plain text
  */
 export function htmlToText(html: string): string {
-  // Remove script and style elements
-  let text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
-  text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+  // First, check if content is TipTap JSON and extract text directly
+  let text = '';
+  
+  // Check if it looks like JSON (starts with { or [)
+  if (html.trim().startsWith('{') || html.trim().startsWith('[')) {
+    console.log(`[htmlToText] Content appears to be JSON, attempting TipTap extraction...`);
+    const extractedText = tiptapJsonToText(html);
+    if (extractedText) {
+      // Successfully extracted text from TipTap JSON
+      text = extractedText;
+      console.log(`[htmlToText] ✓ Using extracted TipTap text (${text.length} chars)`);
+    } else {
+      // Failed to extract, treat as HTML
+      console.log(`[htmlToText] TipTap extraction failed or empty, treating as HTML...`);
+      text = html;
+    }
+  } else {
+    // Not JSON, treat as HTML
+    text = html;
+  }
+  
+  // If we have HTML (not already extracted text), process it
+  if (text === html || (!text.trim().startsWith('{') && !text.trim().startsWith('['))) {
+    // Remove script and style elements
+    text = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+    text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
 
-  // Replace HTML entities
-  text = text.replace(/&nbsp;/g, ' ');
-  text = text.replace(/&amp;/g, '&');
-  text = text.replace(/&lt;/g, '<');
-  text = text.replace(/&gt;/g, '>');
-  text = text.replace(/&quot;/g, '"');
-  text = text.replace(/&#39;/g, "'");
+    // Replace HTML entities
+    text = text.replace(/&nbsp;/g, ' ');
+    text = text.replace(/&amp;/g, '&');
+    text = text.replace(/&lt;/g, '<');
+    text = text.replace(/&gt;/g, '>');
+    text = text.replace(/&quot;/g, '"');
+    text = text.replace(/&#39;/g, "'");
 
-  // Replace block elements with newlines
-  text = text.replace(/<\/?(p|div|h[1-6]|li|br|hr)[^>]*>/gi, '\n');
-  text = text.replace(/<\/?(ul|ol|dl|table|tr)[^>]*>/gi, '\n');
+    // Replace block elements with newlines
+    text = text.replace(/<\/?(p|div|h[1-6]|li|br|hr)[^>]*>/gi, '\n');
+    text = text.replace(/<\/?(ul|ol|dl|table|tr)[^>]*>/gi, '\n');
 
-  // Remove all remaining HTML tags
-  text = text.replace(/<[^>]+>/g, '');
+    // Remove all remaining HTML tags
+    text = text.replace(/<[^>]+>/g, '');
 
-  // Clean up whitespace
-  text = text.replace(/\n\s*\n\s*\n/g, '\n\n');
-  text = text.replace(/[ \t]+/g, ' ');
-  text = text.trim();
+    // Clean up whitespace
+    text = text.replace(/\n\s*\n\s*\n/g, '\n\n');
+    text = text.replace(/[ \t]+/g, ' ');
+    text = text.trim();
+  }
 
   return text;
 }

@@ -30,38 +30,36 @@ export async function POST(
       }
 
       const body = await req.json();
-      const { message, sessionId, useRAG } = body;
+      const { message, sessionId } = body;
+
+      console.log(`[API Chat] ===== START: Chat request for contract ${contractId} =====`);
+      console.log(`[API Chat] User: ${user.id}, Message: ${message.substring(0, 100)}...`);
+      console.log(`[API Chat] Contract found: ${contract.title || 'No title'}`);
+      console.log(`[API Chat] Contract content exists: ${!!contract.content}`);
+      console.log(`[API Chat] Contract content type: ${typeof contract.content}`);
+      console.log(`[API Chat] Contract content length: ${contract.content?.length || 0} characters`);
+      if (contract.content) {
+        console.log(`[API Chat] Contract content preview (first 500 chars): ${contract.content.substring(0, 500)}...`);
+      }
 
       if (!message || typeof message !== 'string') {
         return NextResponse.json({ error: 'Message is required' }, { status: 400 });
       }
 
-      // Check if embeddings exist
-      const { hasContractEmbeddings } = await import('@/lib/services/ai/embedding');
-      const hasEmbeddings = await hasContractEmbeddings(contractId);
-
-      if (useRAG !== false && !hasEmbeddings) {
-        return NextResponse.json(
-          { 
-            error: 'Embeddings not found',
-            message: 'Bu sözleşme için embedding\'ler oluşturulmamış. Lütfen önce embedding\'leri oluşturun.',
-            requiresEmbeddings: true,
-          },
-          { status: 400 }
-        );
-      }
-
       // Generate session ID if not provided
       const finalSessionId = sessionId || `contract-${contractId}-${user.id}-${Date.now()}`;
+      console.log(`[API Chat] Session ID: ${finalSessionId}`);
 
       // Generate chat response
+      console.log(`[API Chat] Calling generateChatResponse...`);
       const response = await generateChatResponse({
         contractId,
         userId: user.id,
         sessionId: finalSessionId,
         message,
-        useRAG: useRAG !== false && hasEmbeddings, // Only use RAG if embeddings exist
       });
+      console.log(`[API Chat] ✓ Chat response generated successfully`);
+      console.log(`[API Chat] ===== END: Chat request =====`);
 
       return NextResponse.json(response, { status: 200 });
     } catch (error: any) {

@@ -83,6 +83,8 @@ export async function buildContractContext(
  * Format context into a prompt-friendly string
  */
 export function formatContextForPrompt(context: ContractContext): string {
+  console.log(`[ContextBuilder] ===== START: Formatting context for prompt =====`);
+  
   let prompt = `Sözleşme Bilgileri:\n`;
   prompt += `Başlık: ${context.contractMetadata.title}\n`;
   
@@ -119,14 +121,24 @@ export function formatContextForPrompt(context: ContractContext): string {
   if (context.relevantChunks.length > 0) {
     // If there's only one chunk with score 1.0, it's the full content
     if (context.relevantChunks.length === 1 && context.relevantChunks[0].score === 1.0) {
+      console.log(`[ContextBuilder] Formatting full contract content (single chunk)`);
+      console.log(`[ContextBuilder] Chunk text length: ${context.relevantChunks[0].text.length} characters`);
       prompt += `Sözleşme İçeriği:\n\n${context.relevantChunks[0].text}\n\n`;
     } else {
+      console.log(`[ContextBuilder] Formatting ${context.relevantChunks.length} chunks`);
       prompt += `İlgili Sözleşme Bölümleri:\n\n`;
       context.relevantChunks.forEach((chunk, index) => {
         prompt += `[Bölüm ${index + 1}${chunk.score ? ` - Benzerlik: ${(chunk.score * 100).toFixed(1)}%` : ''}]\n${chunk.text}\n\n`;
       });
     }
+  } else {
+    console.warn(`[ContextBuilder] WARNING: No relevant chunks found in context!`);
   }
+
+  console.log(`[ContextBuilder] ✓ Prompt formatted successfully`);
+  console.log(`[ContextBuilder] Final prompt length: ${prompt.length} characters`);
+  console.log(`[ContextBuilder] Final prompt preview (first 1000 chars):\n${prompt.substring(0, 1000)}...`);
+  console.log(`[ContextBuilder] ===== END: Formatting context for prompt =====`);
 
   return prompt;
 }
@@ -138,23 +150,52 @@ export async function buildContractContextWithContent(
   contractId: string,
   contractContent: string
 ): Promise<ContractContext> {
+  console.log(`[ContextBuilder] ===== START: Building context for contract ${contractId} =====`);
+  console.log(`[ContextBuilder] Input content length: ${contractContent.length} characters`);
+  console.log(`[ContextBuilder] Input content preview (first 300 chars): ${contractContent.substring(0, 300)}...`);
+  
   // Get contract metadata
+  console.log(`[ContextBuilder] Fetching contract metadata...`);
   const contract = await Contract.findById(contractId)
     .populate('companyId', 'name')
     .populate('counterpartyId', 'name')
     .lean();
 
   if (!contract) {
+    console.error(`[ContextBuilder] ERROR: Contract ${contractId} not found`);
     throw new Error('Contract not found');
   }
+  console.log(`[ContextBuilder] ✓ Contract metadata fetched: ${contract.title}`);
 
   // Get contract variables
+  console.log(`[ContextBuilder] Fetching contract variables...`);
   const variables = await ContractVariable.find({
     contractId: new mongoose.Types.ObjectId(contractId),
   }).lean();
+  console.log(`[ContextBuilder] ✓ Found ${variables.length} contract variables`);
 
   // Convert HTML to plain text
+  console.log(`[ContextBuilder] Converting HTML to plain text...`);
+  console.log(`[ContextBuilder] Input content type check:`, {
+    startsWithBrace: contractContent.trim().startsWith('{'),
+    startsWithBracket: contractContent.trim().startsWith('['),
+    startsWithLessThan: contractContent.trim().startsWith('<'),
+    firstChar: contractContent.trim().charAt(0),
+  });
+  
   const plainText = htmlToText(contractContent);
+  console.log(`[ContextBuilder] ✓ HTML converted to plain text`);
+  console.log(`[ContextBuilder] Plain text length: ${plainText.length} characters`);
+  
+  if (plainText.length === 0) {
+    console.error(`\n\n[ContextBuilder] ⚠⚠⚠ CRITICAL ERROR: Plain text is EMPTY after conversion! ⚠⚠⚠`);
+    console.error(`[ContextBuilder] Input content length: ${contractContent.length}`);
+    console.error(`[ContextBuilder] Input content preview: ${contractContent.substring(0, 500)}...`);
+    console.error(`[ContextBuilder] This means contract content will NOT be sent to AI!`);
+    console.error(`[ContextBuilder] ⚠⚠⚠ ============================================== ⚠⚠⚠\n\n`);
+  } else {
+    console.log(`[ContextBuilder] ✓ Plain text preview (first 500 chars):\n${plainText.substring(0, 500)}...`);
+  }
 
   // Build context with full content as a single chunk
   const context: ContractContext = {
@@ -179,6 +220,15 @@ export async function buildContractContextWithContent(
       score: 1.0, // Full content gets max score
     }],
   };
+
+  console.log(`[ContextBuilder] ✓ Context built successfully`);
+  console.log(`[ContextBuilder] Context summary:`, {
+    metadataTitle: context.contractMetadata.title,
+    variablesCount: context.variables.length,
+    chunksCount: context.relevantChunks.length,
+    firstChunkLength: context.relevantChunks[0]?.text?.length || 0,
+  });
+  console.log(`[ContextBuilder] ===== END: Building context =====`);
 
   return context;
 }

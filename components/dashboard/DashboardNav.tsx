@@ -19,7 +19,6 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: '📊' },
   { href: '/dashboard/contracts', label: 'Sözleşmeler', icon: '📄' },
   { href: '/dashboard/documents', label: 'Dokümanlar', icon: '📑' },
-  { href: '/dashboard/chat', label: 'AI Chat', icon: '🤖' },
   { href: '/dashboard/organizations', label: 'Organizasyonlar', icon: '🏢' },
   { href: '/dashboard/workspaces', label: 'Çalışma Alanları', icon: '📁' },
   { href: '/dashboard/compliance', label: 'Uyum', icon: '✅' },

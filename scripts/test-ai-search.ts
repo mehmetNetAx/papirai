@@ -83,7 +83,6 @@ async function testChatResponse(contractId: string, query: string, userId: strin
       userId,
       sessionId,
       message: query,
-      useRAG: true,
     });
 
     console.log(`✓ Chat response generated`);
