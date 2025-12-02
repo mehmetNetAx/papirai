@@ -203,13 +203,30 @@ export async function canUserAccessContract(
 export async function getUserAssignedContracts(user: AuthUser): Promise<mongoose.Types.ObjectId[]> {
   const userId = new mongoose.Types.ObjectId(user.id);
   
-  // Find contracts where user is in assignedUsers
+  // First, check ContractUserAssignment table (preferred method)
+  const ContractUserAssignment = (await import('@/lib/db/models/ContractUserAssignment')).default;
+  const assignments = await ContractUserAssignment.find({
+    userId,
+    isActive: true,
+  }).select('contractId').lean();
+
+  const contractIdsFromAssignments = assignments.map((a: any) => a.contractId);
+
+  // Also check contracts where user is in assignedUsers array (for backward compatibility)
   const contracts = await Contract.find({
     assignedUsers: userId,
     isActive: true,
   }).select('_id').lean();
 
-  return contracts.map((c: any) => c._id);
+  const contractIdsFromArray = contracts.map((c: any) => c._id);
+
+  // Combine and deduplicate
+  const allContractIds = [...new Set([
+    ...contractIdsFromAssignments.map((id: any) => id.toString()),
+    ...contractIdsFromArray.map((id: any) => id.toString()),
+  ])];
+
+  return allContractIds.map((id: string) => new mongoose.Types.ObjectId(id));
 }
 
 /**
@@ -242,13 +259,34 @@ export async function isUserLimitedToSingleWorkspace(user: AuthUser): Promise<{
 
 /**
  * Check if user has access to only one contract
+ * This is used for users who were invited to a specific contract
  */
 export async function isUserLimitedToSingleContract(user: AuthUser): Promise<{
   isLimited: boolean;
   contractId: mongoose.Types.ObjectId | null;
 }> {
+  // Check if user was created from a contract-specific invitation
+  // If user has no workspace permissions and only one contract assignment, they're limited
+  const fullUser = await User.findById(user.id)
+    .select('permissions')
+    .lean();
+
+  if (!fullUser) {
+    return { isLimited: false, contractId: null };
+  }
+
+  const userWorkspaceIds = (fullUser.permissions?.workspaces || []) as mongoose.Types.ObjectId[];
+  
+  // If user has workspace permissions, they're not limited to single contract
+  if (userWorkspaceIds.length > 0) {
+    return { isLimited: false, contractId: null };
+  }
+
+  // Check contract assignments
   const assignedContracts = await getUserAssignedContracts(user);
   
+  // If user has only one contract assignment and no workspace permissions,
+  // they're likely invited to a specific contract
   if (assignedContracts.length === 1) {
     return { isLimited: true, contractId: assignedContracts[0] };
   }

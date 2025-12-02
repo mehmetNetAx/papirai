@@ -207,10 +207,29 @@ const handleGet = requireAuth(async (req: NextRequest, user) => {
       .sort({ updatedAt: -1 })
       .lean();
 
-    // Filter contracts by access control (check assignedUsers for external users)
+    // Filter contracts by access control (check assignedUsers and ContractUserAssignment for external users)
     const userId = new mongoose.Types.ObjectId(user.id);
+    
+    // Get all contract assignments for this user
+    const ContractUserAssignment = (await import('@/lib/db/models/ContractUserAssignment')).default;
+    const userAssignments = await ContractUserAssignment.find({
+      userId,
+      isActive: true,
+    }).select('contractId').lean();
+    
+    const assignedContractIds = new Set(
+      userAssignments.map((a: any) => a.contractId.toString())
+    );
+
     contracts = contracts.filter((contract: any) => {
-      // If user is assigned to contract, they can see it
+      const contractIdStr = contract._id.toString();
+      
+      // If user is assigned to contract via ContractUserAssignment, they can see it
+      if (assignedContractIds.has(contractIdStr)) {
+        return true;
+      }
+
+      // Also check assignedUsers array (for backward compatibility)
       const assignedUsers = contract.assignedUsers || [];
       const isAssigned = assignedUsers.some((uid: any) => {
         const uidObj = uid instanceof mongoose.Types.ObjectId ? uid : new mongoose.Types.ObjectId(uid);

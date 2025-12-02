@@ -15,6 +15,7 @@ export { default as Notification } from './Notification';
 export { default as ContractAnalysis } from './ContractAnalysis';
 export { default as HelpDocument } from './HelpDocument';
 export { default as PasswordResetToken } from './PasswordResetToken';
+export { default as Invitation } from './Invitation';
 
 // Type exports
 export type { IUser } from './User';
@@ -33,4 +34,5 @@ export type { INotification } from './Notification';
 export type { IContractAnalysis, ICriterion, ISubCriterion } from './ContractAnalysis';
 export type { IHelpDocument } from './HelpDocument';
 export type { IPasswordResetToken } from './PasswordResetToken';
+export type { IInvitation } from './Invitation';
 

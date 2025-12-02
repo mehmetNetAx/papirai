@@ -213,7 +213,7 @@ export function canEditContract(
   }
 
   // If contract has specific allowedEditors, check if user is in that list
-  if (allowedEditors && allowedEditors.length > 0) {
+  if (allowedEditors && Array.isArray(allowedEditors) && allowedEditors.length > 0) {
     const userObjectId = new mongoose.Types.ObjectId(user.id);
     const isAllowed = allowedEditors.some(editorId => {
       const editorObjectId = typeof editorId === 'string' 

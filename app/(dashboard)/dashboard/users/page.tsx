@@ -129,45 +129,87 @@ export default async function UsersPage({ searchParams }: PageProps) {
   // Get workspace and contract information for each user
   const usersWithDetails = await Promise.all(
     users.map(async (user: any) => {
-      const userId = user._id;
-      
-      // Get workspaces from permissions
-      const workspaceIds = user.permissions?.workspaces || [];
-      const workspaces = workspaceIds.length > 0
-        ? await Workspace.find({ _id: { $in: workspaceIds } })
-            .select('name companyId')
-            .populate('companyId', 'name')
-            .lean()
-        : [];
+      try {
+        const userId = user._id;
+        
+        // Get workspaces from permissions
+        const workspaceIds = user.permissions?.workspaces || [];
+        // Convert workspaceIds to ObjectId array if they're strings
+        const workspaceObjectIds = workspaceIds.map((id: any) => 
+          id instanceof mongoose.Types.ObjectId ? id : new mongoose.Types.ObjectId(id)
+        );
+        const workspaces = workspaceObjectIds.length > 0
+          ? await Workspace.find({ _id: { $in: workspaceObjectIds } })
+              .select('name companyId')
+              .populate('companyId', 'name')
+              .lean()
+          : [];
 
-      // Get contracts where user is assigned (from ContractUserAssignment table)
-      const assignments = await ContractUserAssignment.find({
-        userId,
-        isActive: true,
-      })
-        .populate({
-          path: 'contractId',
-          select: '_id title isActive',
-          match: { isActive: true },
+        // Get contracts where user is assigned (from ContractUserAssignment table)
+        const assignments = await ContractUserAssignment.find({
+          userId: new mongoose.Types.ObjectId(userId),
+          isActive: true,
         })
-        .limit(5) // Show only first 5
-        .lean();
+          .populate({
+            path: 'contractId',
+            select: '_id title isActive',
+            match: { isActive: true },
+          })
+          .limit(5) // Show only first 5
+          .lean();
 
-      const assignedContracts = assignments
-        .map((assignment: any) => assignment.contractId)
-        .filter((contract: any) => contract && contract._id);
+        const assignedContracts = assignments
+          .map((assignment: any) => assignment.contractId)
+          .filter((contract: any) => contract && contract._id)
+          .map((contract: any) => ({
+            _id: contract._id.toString(),
+            title: contract.title,
+          }));
 
-      const totalAssignedContracts = await ContractUserAssignment.countDocuments({
-        userId,
-        isActive: true,
-      });
+        const totalAssignedContracts = await ContractUserAssignment.countDocuments({
+          userId: new mongoose.Types.ObjectId(userId),
+          isActive: true,
+        });
 
-      return {
-        ...user,
-        workspaces,
-        assignedContracts,
-        totalAssignedContracts,
-      };
+        return {
+          _id: user._id.toString(),
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          isActive: user.isActive,
+          companyId: user.companyId ? {
+            _id: (user.companyId as any)._id?.toString() || user.companyId.toString(),
+            name: (user.companyId as any).name || 'Belirtilmemiş',
+          } : null,
+          workspaces: workspaces.map((ws: any) => ({
+            _id: ws._id.toString(),
+            name: ws.name,
+            companyId: ws.companyId ? {
+              _id: (ws.companyId as any)._id?.toString() || ws.companyId.toString(),
+              name: (ws.companyId as any).name || 'Belirtilmemiş',
+            } : null,
+          })),
+          assignedContracts,
+          totalAssignedContracts,
+        };
+      } catch (error: any) {
+        console.error(`[UsersPage] Error processing user ${user._id}:`, error);
+        // Return user with minimal data if processing fails
+        return {
+          _id: user._id.toString(),
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          isActive: user.isActive,
+          companyId: user.companyId ? {
+            _id: (user.companyId as any)._id?.toString() || user.companyId.toString(),
+            name: (user.companyId as any).name || 'Belirtilmemiş',
+          } : null,
+          workspaces: [],
+          assignedContracts: [],
+          totalAssignedContracts: 0,
+        };
+      }
     })
   );
 
@@ -287,7 +329,7 @@ export default async function UsersPage({ searchParams }: PageProps) {
                 <tbody className="divide-y divide-gray-200/50 dark:divide-[#324d67]/50 bg-white dark:bg-[#192633]">
                   {usersWithDetails.length > 0 ? (
                     usersWithDetails.map((user: any) => (
-                      <tr key={user._id.toString()} className="hover:bg-gray-50/50 dark:hover:bg-[#1f2e3d] transition-colors">
+                      <tr key={user._id} className="hover:bg-gray-50/50 dark:hover:bg-[#1f2e3d] transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="flex-shrink-0 h-10 w-10">
@@ -319,13 +361,13 @@ export default async function UsersPage({ searchParams }: PageProps) {
                           </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                          {(user.companyId as any)?.name || 'Belirtilmemiş'}
+                          {user.companyId?.name || 'Belirtilmemiş'}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
                           {user.workspaces && user.workspaces.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
                               {user.workspaces.slice(0, 2).map((ws: any) => (
-                                <Badge key={ws._id.toString()} variant="outline" className="text-xs">
+                                <Badge key={ws._id} variant="outline" className="text-xs">
                                   {ws.name}
                                 </Badge>
                               ))}
@@ -345,8 +387,8 @@ export default async function UsersPage({ searchParams }: PageProps) {
                               <div className="flex flex-wrap gap-1">
                                 {user.assignedContracts.slice(0, 2).map((contract: any) => (
                                   <Link
-                                    key={contract._id.toString()}
-                                    href={`/dashboard/contracts/${contract._id.toString()}`}
+                                    key={contract._id}
+                                    href={`/dashboard/contracts/${contract._id}`}
                                     className="text-primary hover:underline text-xs truncate max-w-[150px]"
                                   >
                                     {contract.title}
@@ -365,7 +407,7 @@ export default async function UsersPage({ searchParams }: PageProps) {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(user.isActive)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <UserActionsMenu userId={user._id.toString()} userName={user.name || user.email} />
+                          <UserActionsMenu userId={user._id} userName={user.name || user.email} />
                         </td>
                       </tr>
                     ))

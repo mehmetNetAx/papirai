@@ -21,6 +21,16 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 // Toast functionality - simple implementation
 const showToast = (title: string, description: string, variant: 'default' | 'destructive' = 'default') => {
   // Simple alert for now - can be replaced with proper toast component
@@ -51,6 +61,12 @@ export default function ContractUserAssignment({ contractId }: ContractUserAssig
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   const [userToRemove, setUserToRemove] = useState<User | null>(null);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'viewer' | 'contract_manager' | 'legal_reviewer'>('viewer');
+  const [inviting, setInviting] = useState(false);
+  const [inviteError, setInviteError] = useState('');
+  const [inviteSuccess, setInviteSuccess] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -145,6 +161,57 @@ export default function ContractUserAssignment({ contractId }: ContractUserAssig
     }
   };
 
+  const handleInviteUser = async () => {
+    if (!inviteEmail) {
+      setInviteError('Lütfen e-posta adresini girin.');
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(inviteEmail)) {
+      setInviteError('Lütfen geçerli bir e-posta adresi girin.');
+      return;
+    }
+
+    setInviting(true);
+    setInviteError('');
+    setInviteSuccess(false);
+
+    try {
+      const response = await fetch('/api/invitations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: inviteEmail.trim().toLowerCase(),
+          contractId,
+          role: inviteRole,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setInviteError(data.error || 'Davet gönderilemedi.');
+        return;
+      }
+
+      setInviteSuccess(true);
+      setInviteEmail('');
+      setTimeout(() => {
+        setShowInviteDialog(false);
+        setInviteSuccess(false);
+      }, 2000);
+    } catch (error: any) {
+      console.error('[InviteUser] Unexpected error:', error);
+      setInviteError(error?.message || 'Bir hata oluştu. Lütfen tekrar deneyin.');
+    } finally {
+      setInviting(false);
+    }
+  };
+
   if (loading) {
     return <div>Yükleniyor...</div>;
   }
@@ -158,6 +225,21 @@ export default function ContractUserAssignment({ contractId }: ContractUserAssig
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Invite Button */}
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowInviteDialog(true);
+              setInviteEmail('');
+              setInviteError('');
+              setInviteSuccess(false);
+            }}
+          >
+            E-posta ile Davet Et
+          </Button>
+        </div>
+
         {/* Search */}
         <div className="space-y-2">
           <Input
@@ -242,6 +324,80 @@ export default function ContractUserAssignment({ contractId }: ContractUserAssig
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Invite Dialog */}
+        <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Sözleşmeye Kullanıcı Davet Et</DialogTitle>
+              <DialogDescription>
+                E-posta adresi ile yeni bir kullanıcıyı bu sözleşmeye davet edin. Davet edilen kullanıcı sadece bu sözleşmeyi görebilecek.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {inviteError && (
+                <Alert className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+                  <AlertDescription className="text-red-600 dark:text-red-400">
+                    {inviteError}
+                  </AlertDescription>
+                </Alert>
+              )}
+              {inviteSuccess && (
+                <Alert className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20">
+                  <AlertDescription className="text-green-600 dark:text-green-400">
+                    Davet başarıyla gönderildi!
+                  </AlertDescription>
+                </Alert>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="invite-email">E-posta Adresi</Label>
+                <Input
+                  id="invite-email"
+                  type="email"
+                  placeholder="kullanici@example.com"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  disabled={inviting || inviteSuccess}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="invite-role">Rol</Label>
+                <select
+                  id="invite-role"
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value as 'viewer' | 'contract_manager' | 'legal_reviewer')}
+                  disabled={inviting || inviteSuccess}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-[#324d67] bg-white dark:bg-[#192633] text-gray-900 dark:text-white"
+                >
+                  <option value="viewer">Görüntüleyici</option>
+                  <option value="contract_manager">Sözleşme Yöneticisi</option>
+                  <option value="legal_reviewer">Hukuk İnceleyici</option>
+                </select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowInviteDialog(false);
+                  setInviteEmail('');
+                  setInviteError('');
+                  setInviteSuccess(false);
+                }}
+                disabled={inviting}
+              >
+                İptal
+              </Button>
+              <Button
+                onClick={handleInviteUser}
+                disabled={inviting || inviteSuccess}
+                className="button button-egg-blue"
+              >
+                {inviting ? 'Gönderiliyor...' : 'Davet Gönder'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

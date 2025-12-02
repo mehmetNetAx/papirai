@@ -10,8 +10,10 @@ export async function proxy(req: NextRequest) {
   const publicPaths = ['/', '/login', '/register', '/forgot-password'];
   const isPublicPath = publicPaths.includes(path) || 
                        path.startsWith('/reset-password') ||
+                       path.startsWith('/accept-invitation') ||
                        path.startsWith('/api/auth') || 
-                       path.startsWith('/api/health');
+                       path.startsWith('/api/health') ||
+                       path.startsWith('/api/invitations');
 
   // If path is public, allow access
   if (isPublicPath) {
