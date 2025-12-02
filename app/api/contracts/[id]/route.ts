@@ -151,8 +151,26 @@ export async function PATCH(
       // Store old status before updating
       const oldStatus = contract.status;
 
+      // Store old content to check if it changed
+      const oldContent = contract.content;
+      
       Object.assign(contract, updates);
       await contract.save();
+
+      // If content was updated, regenerate embeddings in the background
+      if (updates.content && contract.content && contract.content.trim().length > 0 && oldContent !== contract.content) {
+        try {
+          const { generateContractEmbeddings } = await import('@/lib/services/ai/embedding');
+          // Run in background - don't await to avoid blocking response
+          generateContractEmbeddings(contract._id.toString()).catch((error) => {
+            console.error('Error regenerating embeddings after contract update:', error);
+            // Don't fail update if embedding generation fails
+          });
+        } catch (error) {
+          console.error('Error importing embedding service:', error);
+          // Don't fail update if embedding service import fails
+        }
+      }
 
       // Determine important changes for notifications
       const importantChanges: string[] = [];

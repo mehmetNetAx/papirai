@@ -12,6 +12,7 @@ import {
   isUserLimitedToSingleContract,
   getUserAccessibleWorkspaces,
 } from '@/lib/utils/context';
+import { hasContractEmbeddings } from '@/lib/services/ai/embedding';
 import mongoose from 'mongoose';
 
 // GET - List contracts
@@ -51,7 +52,14 @@ const handleGet = requireAuth(async (req: NextRequest, user) => {
         .lean();
       
       if (contract) {
-        return NextResponse.json({ contracts: [contract] });
+        // Check embedding status
+        const hasEmbeddings = await hasContractEmbeddings(contract._id.toString());
+        return NextResponse.json({ 
+          contracts: [{
+            ...contract,
+            hasEmbeddings,
+          }] 
+        });
       } else {
         return NextResponse.json({ contracts: [] });
       }
@@ -282,6 +290,21 @@ const handlePost = requireAuth(async (req: NextRequest, user) => {
       resourceId: contract._id.toString(),
       details: { title: contract.title },
     });
+
+    // Generate embeddings in the background (don't wait for it)
+    if (contract.content && contract.content.trim().length > 0) {
+      try {
+        const { generateContractEmbeddings } = await import('@/lib/services/ai/embedding');
+        // Run in background - don't await to avoid blocking response
+        generateContractEmbeddings(contract._id.toString()).catch((error) => {
+          console.error('Error generating embeddings for new contract:', error);
+          // Don't fail contract creation if embedding generation fails
+        });
+      } catch (error) {
+        console.error('Error importing embedding service:', error);
+        // Don't fail contract creation if embedding service import fails
+      }
+    }
 
     return NextResponse.json({ contract }, { status: 201 });
   } catch (error: any) {

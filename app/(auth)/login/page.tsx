@@ -137,13 +137,13 @@ export default function LoginPage() {
                 {/* Password Input */}
                 <fieldset className="form-group mb-4">
                   <div>
-                    <div className="d-flex justify-content-between mb-2">
+                    <div className="flex items-center justify-between mb-2 gap-8">
                       <label htmlFor="login-password" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         Parola
                       </label>
                       <Link
                         href="/forgot-password"
-                        className="text-sm text-primary hover:underline"
+                        className="text-sm text-primary hover:underline whitespace-nowrap"
                       >
                         <small>Şifreni mi unuttun?</small>
                       </Link>

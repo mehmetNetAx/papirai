@@ -7,8 +7,9 @@ export async function proxy(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
 
   // Public paths that don't require authentication
-  const publicPaths = ['/', '/login', '/register'];
+  const publicPaths = ['/', '/login', '/register', '/forgot-password'];
   const isPublicPath = publicPaths.includes(path) || 
+                       path.startsWith('/reset-password') ||
                        path.startsWith('/api/auth') || 
                        path.startsWith('/api/health');
 

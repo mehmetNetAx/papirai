@@ -19,6 +19,7 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: '📊' },
   { href: '/dashboard/contracts', label: 'Sözleşmeler', icon: '📄' },
   { href: '/dashboard/documents', label: 'Dokümanlar', icon: '📑' },
+  { href: '/dashboard/chat', label: 'AI Chat', icon: '🤖' },
   { href: '/dashboard/organizations', label: 'Organizasyonlar', icon: '🏢' },
   { href: '/dashboard/workspaces', label: 'Çalışma Alanları', icon: '📁' },
   { href: '/dashboard/compliance', label: 'Uyum', icon: '✅' },
@@ -31,9 +32,14 @@ const adminNavItems = [
   { href: '/dashboard/integrations', label: 'Entegrasyonlar', icon: '🔌' },
 ];
 
+const systemAdminNavItems = [
+  { href: '/dashboard/settings/mail', label: 'Mail Ayarları', icon: '📧' },
+];
+
 export default function DashboardNav({ user }: DashboardNavProps) {
   const pathname = usePathname();
   const isAdmin = ['system_admin', 'group_admin', 'company_admin'].includes(user.role);
+  const isSystemAdmin = user.role === 'system_admin';
 
   return (
     <nav className="w-64 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-[#111a22] p-4">
@@ -71,6 +77,27 @@ export default function DashboardNav({ user }: DashboardNavProps) {
           <>
             <div className="my-2 border-t border-gray-200 dark:border-gray-800"></div>
             {adminNavItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  pathname === item.href || pathname.startsWith(item.href + '/')
+                    ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary font-semibold font-display'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50 hover:text-primary dark:hover:text-primary'
+                )}
+              >
+                <span>{item.icon}</span>
+                {item.label}
+              </Link>
+            ))}
+          </>
+        )}
+
+        {isSystemAdmin && (
+          <>
+            <div className="my-2 border-t border-gray-200 dark:border-gray-800"></div>
+            {systemAdminNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}

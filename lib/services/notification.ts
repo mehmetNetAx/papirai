@@ -28,6 +28,11 @@ export async function sendEmailNotification(
   subject: string,
   message: string
 ): Promise<void> {
+  // Check if SMTP is configured
+  if (!process.env.SMTP_HOST || !process.env.SMTP_PORT || !process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
+    throw new Error('SMTP ayarları yapılandırılmamış. Lütfen SMTP_HOST, SMTP_PORT, SMTP_USER ve SMTP_PASSWORD ortam değişkenlerini ayarlayın.');
+  }
+
   try {
     const mailTransporter = getTransporter();
     
@@ -37,9 +42,21 @@ export async function sendEmailNotification(
       subject,
       html: message,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to send email notification:', error);
-    // Don't throw - email failures shouldn't break the app
+    
+    // Check for Gmail App Password error
+    if (error?.responseCode === 534 || error?.response?.includes('Application-specific password required')) {
+      throw new Error('Gmail App Password gerekiyor. Lütfen Google Hesabınızda App Password oluşturun ve SMTP_PASSWORD olarak kullanın. Normal şifre çalışmaz.');
+    }
+    
+    // Check for authentication errors
+    if (error?.code === 'EAUTH') {
+      throw new Error(`SMTP kimlik doğrulama hatası: ${error?.response || error?.message || 'Geçersiz kullanıcı adı veya şifre'}`);
+    }
+    
+    // Re-throw other errors
+    throw error;
   }
 }
 

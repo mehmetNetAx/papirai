@@ -46,6 +46,19 @@ export async function POST(req: NextRequest) {
         { useAI }
       );
 
+      // Generate embeddings in the background (don't wait for it)
+      try {
+        const { generateContractEmbeddings } = await import('@/lib/services/ai/embedding');
+        // Run in background - don't await to avoid blocking response
+        generateContractEmbeddings(contractId).catch((error) => {
+          console.error('Error generating embeddings for imported contract:', error);
+          // Don't fail import if embedding generation fails
+        });
+      } catch (error) {
+        console.error('Error importing embedding service:', error);
+        // Don't fail import if embedding service import fails
+      }
+
       return NextResponse.json({ contractId }, { status: 201 });
     } catch (error: any) {
       console.error('Error importing contract:', error);

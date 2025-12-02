@@ -24,6 +24,7 @@ import Link from 'next/link';
 import { checkDateStatus, DateStatus } from '@/lib/utils/date-status';
 import ArchiveContractButton from '@/components/contracts/ArchiveContractButton';
 import HelpButton from '@/components/help/HelpButton';
+import EmbeddingStatus from '@/components/contracts/EmbeddingStatus';
 
 interface Contract {
   _id: string;
@@ -37,6 +38,7 @@ interface Contract {
   counterpartyId?: { name: string } | string;
   updatedAt: string | Date;
   isActive?: boolean;
+  hasEmbeddings?: boolean;
 }
 
 type DateFilter = 'all' | 'passed' | 'critical' | 'warning' | 'normal';
@@ -514,6 +516,11 @@ export default function ContractsPage() {
                                 Arşiv
                               </Badge>
                             )}
+                            <EmbeddingStatus 
+                              contractId={contract._id} 
+                              hasEmbeddings={contract.hasEmbeddings}
+                              className="text-xs"
+                            />
                             <span
                               className={`rounded-full px-3 py-1 text-xs font-medium ${
                                 statusColors[contract.status] || statusColors.draft

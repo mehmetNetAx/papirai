@@ -26,6 +26,10 @@ import ContractUserAssignment from '@/components/contracts/ContractUserAssignmen
 import ContractDocumentsManager from '@/components/contracts/ContractDocumentsManager';
 import { canEditContract } from '@/lib/utils/permissions';
 import HelpButton from '@/components/help/HelpButton';
+import ContractChatBot from '@/components/contracts/ContractChatBot';
+import SummaryViewer from '@/components/contracts/SummaryViewer';
+import EmbeddingStatus from '@/components/contracts/EmbeddingStatus';
+import { hasContractEmbeddings } from '@/lib/services/ai/embedding';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -132,7 +136,7 @@ export default async function ContractDetailPage({ params }: PageProps) {
   );
 
   // Fetch related data
-  const [versions, approvals, signatures, variables, complianceChecks, analysis] = await Promise.all([
+  const [versions, approvals, signatures, variables, complianceChecks, analysis, hasEmbeddings] = await Promise.all([
     ContractVersion.find({ contractId: contractObjectId })
       .populate('createdBy', 'name')
       .sort({ versionNumber: -1 })
@@ -158,6 +162,7 @@ export default async function ContractDetailPage({ params }: PageProps) {
       .sort({ analysisDate: -1 })
       .populate('analyzedBy', 'name email')
       .lean(),
+    hasContractEmbeddings(id).catch(() => false), // Check embedding status
   ]);
 
   // Format currency
@@ -208,6 +213,7 @@ export default async function ContractDetailPage({ params }: PageProps) {
                   {contract.contractType}
                 </span>
               )}
+              <EmbeddingStatus contractId={id} hasEmbeddings={hasEmbeddings} />
             </div>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
@@ -238,10 +244,18 @@ export default async function ContractDetailPage({ params }: PageProps) {
 
         {/* Tabs for organized content */}
         <Tabs defaultValue="contract" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-10 mb-6 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-6 lg:grid-cols-12 mb-6 h-auto p-1">
             <TabsTrigger value="contract" className="text-xs lg:text-sm">
               <span className="material-symbols-outlined text-base mr-1">description</span>
               <span className="hidden sm:inline">Sözleşme</span>
+            </TabsTrigger>
+            <TabsTrigger value="summary" className="text-xs lg:text-sm">
+              <span className="material-symbols-outlined text-base mr-1">summarize</span>
+              <span className="hidden sm:inline">Özet</span>
+            </TabsTrigger>
+            <TabsTrigger value="chat" className="text-xs lg:text-sm">
+              <span className="material-symbols-outlined text-base mr-1">chat</span>
+              <span className="hidden sm:inline">AI Chat</span>
             </TabsTrigger>
             <TabsTrigger value="documents" className="text-xs lg:text-sm">
               <span className="material-symbols-outlined text-base mr-1">folder</span>
@@ -292,6 +306,16 @@ export default async function ContractDetailPage({ params }: PageProps) {
               }))}
             />
             <ContractUserAssignment contractId={id} />
+          </TabsContent>
+
+          {/* Summary Tab */}
+          <TabsContent value="summary" className="space-y-6 mt-0">
+            <SummaryViewer contractId={id} />
+          </TabsContent>
+
+          {/* AI Chat Tab */}
+          <TabsContent value="chat" className="space-y-6 mt-0">
+            <ContractChatBot contractId={id} />
           </TabsContent>
 
           {/* Documents Tab */}
