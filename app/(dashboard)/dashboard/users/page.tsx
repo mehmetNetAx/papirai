@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import UserSearchForm from '@/components/users/UserSearchForm';
 import UserFilterDropdown from '@/components/users/UserFilterDropdown';
 import UserActionsMenu from '@/components/users/UserActionsMenu';
+import UserLoggingToggle from '@/components/users/UserLoggingToggle';
 import mongoose from 'mongoose';
 import HelpButton from '@/components/help/HelpButton';
 
@@ -117,7 +118,7 @@ export default async function UsersPage({ searchParams }: PageProps) {
   // Get users with populated company
   const [users, totalUsers] = await Promise.all([
     User.find(query)
-      .select('name email role isActive companyId permissions')
+      .select('name email role isActive companyId permissions loggingEnabled')
       .populate('companyId', 'name')
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -177,6 +178,7 @@ export default async function UsersPage({ searchParams }: PageProps) {
           email: user.email,
           role: user.role,
           isActive: user.isActive,
+          loggingEnabled: user.loggingEnabled || false,
           companyId: user.companyId ? {
             _id: (user.companyId as any)._id?.toString() || user.companyId.toString(),
             name: (user.companyId as any).name || 'Belirtilmemiş',
@@ -201,6 +203,7 @@ export default async function UsersPage({ searchParams }: PageProps) {
           email: user.email,
           role: user.role,
           isActive: user.isActive,
+          loggingEnabled: user.loggingEnabled || false,
           companyId: user.companyId ? {
             _id: (user.companyId as any)._id?.toString() || user.companyId.toString(),
             name: (user.companyId as any).name || 'Belirtilmemiş',
@@ -276,7 +279,7 @@ export default async function UsersPage({ searchParams }: PageProps) {
           {/* User Table */}
           <Card className="border border-gray-200/80 dark:border-[#324d67]/50 bg-white dark:bg-[#192633] shadow-sm rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200/50 dark:divide-[#324d67]/50">
+              <table className="w-full divide-y divide-gray-200/50 dark:divide-[#324d67]/50 table-fixed">
                 <thead className="bg-gray-50/50 dark:bg-[#1f2e3d]">
                   <tr>
                     <th
@@ -321,7 +324,15 @@ export default async function UsersPage({ searchParams }: PageProps) {
                     >
                       Durum
                     </th>
-                    <th className="relative px-6 py-4" scope="col">
+                    {session.user.role === 'system_admin' && (
+                      <th
+                        className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider font-display"
+                        scope="col"
+                      >
+                        Loglama
+                      </th>
+                    )}
+                    <th className="relative px-6 py-4 w-24" scope="col">
                       <span className="sr-only">İşlemler</span>
                     </th>
                   </tr>
@@ -406,14 +417,25 @@ export default async function UsersPage({ searchParams }: PageProps) {
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(user.isActive)}</td>
+                        {session.user.role === 'system_admin' && (
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <UserLoggingToggle 
+                              userId={user._id} 
+                              loggingEnabled={user.loggingEnabled || false}
+                              compact={true}
+                            />
+                          </td>
+                        )}
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <UserActionsMenu userId={user._id} userName={user.name || user.email} />
+                          <div className="flex items-center justify-end">
+                            <UserActionsMenu userId={user._id} userName={user.name || user.email} />
+                          </div>
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={8} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                      <td colSpan={session.user.role === 'system_admin' ? 9 : 8} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                         Kullanıcı bulunamadı.
                       </td>
                     </tr>

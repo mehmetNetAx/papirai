@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { canAccessCompany } from '@/lib/utils/permissions';
 import UserWorkspaceAssignment from '@/components/users/UserWorkspaceAssignment';
 import UserContractAssignment from '@/components/users/UserContractAssignment';
+import UserLoggingToggle from '@/components/users/UserLoggingToggle';
 import mongoose from 'mongoose';
 
 function getRoleLabel(role: string): string {
@@ -140,6 +141,14 @@ export default async function UserDetailPage({ params }: PageProps) {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {(session.user.role === 'system_admin' || session.user.id === id) && (
+              <Button asChild variant="outline">
+                <Link href={`/dashboard/logging/users/${id}`}>
+                  <span className="material-symbols-outlined text-lg mr-2">description</span>
+                  Logları Görüntüle
+                </Link>
+              </Button>
+            )}
             <Button asChild>
               <Link href={`/dashboard/users/${id}/edit`}>
                 <span className="material-symbols-outlined text-lg mr-2">edit</span>
@@ -233,6 +242,17 @@ export default async function UserDetailPage({ params }: PageProps) {
                 </p>
               </div>
             </div>
+
+            {/* Logging Toggle - Only for system admins */}
+            {session.user.role === 'system_admin' && (
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Loglama Ayarları</h3>
+                <UserLoggingToggle 
+                  userId={id} 
+                  loggingEnabled={(user as any).loggingEnabled || false}
+                />
+              </div>
+            )}
 
             {/* Permissions */}
             {user.permissions && (

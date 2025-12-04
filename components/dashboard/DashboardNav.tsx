@@ -33,6 +33,7 @@ const adminNavItems = [
 
 const systemAdminNavItems = [
   { href: '/dashboard/settings/mail', label: 'Mail Ayarları', icon: '📧' },
+  { href: '/dashboard/settings/logging', label: 'Loglama Ayarları', icon: '📝' },
 ];
 
 export default function DashboardNav({ user }: DashboardNavProps) {

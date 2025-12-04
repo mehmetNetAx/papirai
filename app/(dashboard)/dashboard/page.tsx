@@ -16,6 +16,8 @@ import DashboardMetrics from './DashboardMetrics';
 import DeadlineChecker from '@/components/contracts/DeadlineChecker';
 import { getContractsNeedingAttention } from '@/lib/services/master-variables';
 import { buildReportFilters } from '@/lib/utils/report-filters';
+import { canUserAccessContract, getUserAccessibleWorkspaces } from '@/lib/utils/context';
+import ContractUserAssignment from '@/lib/db/models/ContractUserAssignment';
 import HelpButton from '@/components/help/HelpButton';
 
 export default async function DashboardPage() {
@@ -65,12 +67,56 @@ export default async function DashboardPage() {
     ? await buildReportFilters(user)
     : { companyFilter: { companyId: companyObjectId }, workspaceFilter: {} };
 
+  // Get user's assigned contract IDs from ContractUserAssignment
+  const userAssignments = await ContractUserAssignment.find({
+    userId: userObjectId,
+    isActive: true,
+  }).select('contractId').lean();
+  
+  const assignedContractIds = userAssignments.map((a: any) => a.contractId);
+
+  // Build comprehensive query with proper permission filtering
+  let contractQuery: any = {
+    ...companyFilter,
+    isActive: true,
+  };
+
+  // Add workspace filter if user is not system admin
+  if (user && user.role !== 'system_admin') {
+    if (workspaceFilter.workspaceId) {
+      // User has selected a specific workspace
+      contractQuery.workspaceId = workspaceFilter.workspaceId;
+    } else if (workspaceFilter.workspaceId && workspaceFilter.workspaceId.$in) {
+      // User has accessible workspaces
+      contractQuery.workspaceId = workspaceFilter.workspaceId;
+    } else if (user.role !== 'group_admin') {
+      // For regular users, get accessible workspaces
+      const accessibleWorkspaces = await getUserAccessibleWorkspaces(user, companyObjectId);
+      if (accessibleWorkspaces.length > 0) {
+        contractQuery.workspaceId = { $in: accessibleWorkspaces };
+      }
+    }
+  }
+
+  // Build $or query to include assigned contracts
+  // User can see contracts that match the base query OR contracts they're assigned to
+  const orConditions: any[] = [contractQuery];
+
+  // Add assigned contracts condition
+  if (assignedContractIds.length > 0) {
+    orConditions.push({ _id: { $in: assignedContractIds } });
+  }
+
+  // Also check assignedUsers array (for backward compatibility)
+  orConditions.push({ assignedUsers: userObjectId });
+
+  // If there are multiple conditions, use $or
+  if (orConditions.length > 1) {
+    contractQuery = { $or: orConditions };
+  }
+
   // Get contract IDs for related queries
-  const contractIds = await Contract.find({ 
-    ...companyFilter, 
-    ...workspaceFilter,
-    isActive: true 
-  }).distinct('_id');
+  const contractIds = await Contract.find(contractQuery).distinct('_id');
 
   // Get master variables stats
   const masterVariables = await ContractVariable.find({
@@ -101,11 +147,11 @@ export default async function DashboardPage() {
   });
   
   // Also add contracts with value from Contract model (if not already in master variables)
-  const contractsWithValue = await Contract.find({
-    ...companyFilter,
-    isActive: true,
+  const contractsWithValueQuery: any = {
+    ...contractQuery,
     value: { $exists: true, $ne: null },
-  })
+  };
+  const contractsWithValue = await Contract.find(contractsWithValueQuery)
     .select('_id value currency')
     .lean();
   
@@ -138,14 +184,35 @@ export default async function DashboardPage() {
     (totalsByCurrency.size > 0 ? Array.from(totalsByCurrency.values())[0] : 0);
 
   // Get contracts needing attention based on master variables
-  const contractsNeedingAttention = await getContractsNeedingAttention(companyId);
+  const allContractsNeedingAttention = await getContractsNeedingAttention(companyId);
+  
+  // Filter contracts needing attention by user permissions
+  // First, filter by contract IDs that user can access
+  const accessibleContractIdsSet = new Set(
+    contractIds.map((id: any) => id.toString())
+  );
+
+  let contractsNeedingAttentionFiltered = allContractsNeedingAttention.filter((contract: any) => {
+    const contractIdStr = contract._id.toString();
+    return accessibleContractIdsSet.has(contractIdStr);
+  });
+
+  // Final permission check with canUserAccessContract for edge cases
+  const contractsNeedingAttention = user
+    ? await Promise.all(
+        contractsNeedingAttentionFiltered.map(async (contract: any) => {
+          const hasAccess = await canUserAccessContract(user, contract);
+          return hasAccess ? contract : null;
+        })
+      ).then(results => results.filter((c: any) => c !== null))
+    : contractsNeedingAttentionFiltered;
 
   // Fetch dashboard stats
   const [
     totalContracts,
     pendingApprovals,
     complianceAlerts,
-    recentContracts,
+    recentContractsRaw,
     totalContractValue,
     activeContracts,
     expiringSoonContracts,
@@ -153,7 +220,7 @@ export default async function DashboardPage() {
     complianceTrackedVariables,
     masterVariablesCount,
   ] = await Promise.all([
-    Contract.countDocuments({ ...companyFilter, isActive: true }),
+    Contract.countDocuments(contractQuery),
     Approval.countDocuments({
       approverId: userObjectId,
       status: 'pending',
@@ -163,22 +230,21 @@ export default async function DashboardPage() {
       status: { $in: ['non_compliant', 'warning'] },
       alertLevel: { $in: ['high', 'critical'] },
     }),
-    Contract.find({ ...companyFilter, isActive: true })
+    Contract.find(contractQuery)
       .sort({ updatedAt: -1 })
-      .limit(5)
-      .select('title status updatedAt')
+      .limit(20) // Get more to filter by permissions
+      .select('title status updatedAt companyId workspaceId assignedUsers allowedEditors')
       .lean(),
     // Total contract value
     Contract.aggregate([
-      { $match: { ...companyFilter, isActive: true, value: { $exists: true, $ne: null } } },
+      { $match: { ...contractQuery, value: { $exists: true, $ne: null } } },
       { $group: { _id: null, total: { $sum: '$value' } } },
     ]).then((result) => result[0]?.total || 0),
     // Active contracts (executed status)
-    Contract.countDocuments({ ...companyFilter, isActive: true, status: 'executed' }),
+    Contract.countDocuments({ ...contractQuery, status: 'executed' }),
     // Expiring soon (within next 30 days)
     Contract.countDocuments({
-      ...companyFilter,
-      isActive: true,
+      ...contractQuery,
       endDate: {
         $gte: new Date(),
         $lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
@@ -199,6 +265,74 @@ export default async function DashboardPage() {
       isMaster: true,
     }),
   ]);
+
+  // Get accessible workspaces for filtering (if needed)
+  const accessibleWorkspaces = user && user.role !== 'system_admin' && user.role !== 'group_admin'
+    ? await getUserAccessibleWorkspaces(user, companyObjectId)
+    : [];
+
+  // Filter recent contracts by user permissions
+  // First, filter by ContractUserAssignment
+  const assignedContractIdsSet = new Set(
+    assignedContractIds.map((id: any) => id.toString())
+  );
+
+  const accessibleWorkspacesSet = new Set(
+    accessibleWorkspaces.map((wid: any) => wid.toString())
+  );
+
+  let recentContractsFiltered = recentContractsRaw.filter((contract: any) => {
+    const contractIdStr = contract._id.toString();
+    
+    // If user is assigned via ContractUserAssignment, include it
+    if (assignedContractIdsSet.has(contractIdStr)) {
+      return true;
+    }
+
+    // Check assignedUsers array (backward compatibility)
+    const assignedUsers = contract.assignedUsers || [];
+    const isAssigned = assignedUsers.some((uid: any) => {
+      const uidObj = uid instanceof mongoose.Types.ObjectId ? uid : new mongoose.Types.ObjectId(uid);
+      return uidObj.equals(userObjectId);
+    });
+
+    if (isAssigned) {
+      return true;
+    }
+
+    // For system admin, include all contracts from the query
+    if (user && user.role === 'system_admin') {
+      return true;
+    }
+
+    // For group admin, check company access (already filtered by companyFilter)
+    if (user && user.role === 'group_admin') {
+      return true;
+    }
+
+    // For regular users, check workspace access
+    if (user && contract.workspaceId) {
+      const workspaceId = contract.workspaceId instanceof mongoose.Types.ObjectId
+        ? contract.workspaceId
+        : new mongoose.Types.ObjectId(contract.workspaceId);
+      
+      // Check if workspace is in accessible workspaces
+      return accessibleWorkspacesSet.has(workspaceId.toString());
+    }
+
+    // If no workspace, check company access (already filtered)
+    return true;
+  });
+
+  // Final permission check with canUserAccessContract for edge cases
+  const recentContracts = user
+    ? await Promise.all(
+        recentContractsFiltered.slice(0, 10).map(async (contract: any) => {
+          const hasAccess = await canUserAccessContract(user, contract);
+          return hasAccess ? contract : null;
+        })
+      ).then(results => results.filter((c: any) => c !== null).slice(0, 5))
+    : recentContractsFiltered.slice(0, 5);
 
   const getStatusLabel = (status: string): string => {
     const statusMap: Record<string, string> = {

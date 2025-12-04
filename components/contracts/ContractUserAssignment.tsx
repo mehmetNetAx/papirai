@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -54,6 +55,7 @@ interface ContractUserAssignmentProps {
 }
 
 export default function ContractUserAssignment({ contractId }: ContractUserAssignmentProps) {
+  const router = useRouter();
   const [assignedUsers, setAssignedUsers] = useState<User[]>([]);
   const [allowedEditors, setAllowedEditors] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,14 +78,32 @@ export default function ContractUserAssignment({ contractId }: ContractUserAssig
     try {
       const response = await fetch(`/api/contracts/${contractId}/users`);
       if (!response.ok) {
-        throw new Error('Failed to load users');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        
+        // Handle 403 Forbidden - user doesn't have permission
+        if (response.status === 403) {
+          const errorMessage = errorData.error || 'Bu sözleşmeyi görüntüleme yetkiniz bulunmamaktadır.';
+          alert(`Yetki Hatası\n\n${errorMessage}\n\nDashboard sayfasına yönlendiriliyorsunuz...`);
+          router.push('/dashboard');
+          return;
+        }
+        
+        console.error('Failed to load users - Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+        });
+        throw new Error(errorData.error || `Failed to load users: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
       setAssignedUsers(data.assignedUsers || []);
       setAllowedEditors(data.allowedEditors || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading users:', error);
-      showToast('Hata', 'Kullanıcılar yüklenirken bir hata oluştu', 'destructive');
+      // Don't show toast if we're redirecting (403 case)
+      if (error.message && !error.message.includes('403')) {
+        showToast('Hata', error.message || 'Kullanıcılar yüklenirken bir hata oluştu', 'destructive');
+      }
     } finally {
       setLoading(false);
     }

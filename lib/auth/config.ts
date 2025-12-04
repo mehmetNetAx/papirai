@@ -2,6 +2,7 @@ import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import connectDB from '@/lib/db/connection';
 import User from '@/lib/db/models/User';
+import { logLoginActivity } from '@/lib/middleware/activity-logger';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -82,6 +83,11 @@ export const authOptions: NextAuthOptions = {
 
           if (!isPasswordValid) {
             console.error(`[Auth] Invalid password for user: ${user.email}`);
+            // Log failed login attempt (async, don't wait)
+            // Note: req is not available in authorize function, so we pass null
+            logLoginActivity(user._id.toString(), null as any, false, 'Invalid password').catch(err => 
+              console.error('[Auth] Failed to log failed login:', err)
+            );
             return null;
           }
 
@@ -99,6 +105,12 @@ export const authOptions: NextAuthOptions = {
 
           const duration = Date.now() - startTime;
           console.log(`[Auth] Login successful for ${email} (took ${duration}ms)`);
+
+          // Log successful login (async, don't wait)
+          // Note: req is not available in authorize function, so we pass null
+          logLoginActivity(user._id.toString(), null as any, true).catch(err => 
+            console.error('[Auth] Failed to log login activity:', err)
+          );
 
           return {
             id: user._id.toString(),

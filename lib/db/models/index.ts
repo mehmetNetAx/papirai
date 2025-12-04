@@ -16,6 +16,8 @@ export { default as ContractAnalysis } from './ContractAnalysis';
 export { default as HelpDocument } from './HelpDocument';
 export { default as PasswordResetToken } from './PasswordResetToken';
 export { default as Invitation } from './Invitation';
+export { default as UserActivityLog } from './UserActivityLog';
+export { default as LoggingSettings } from './LoggingSettings';
 
 // Type exports
 export type { IUser } from './User';
@@ -35,4 +37,6 @@ export type { IContractAnalysis, ICriterion, ISubCriterion } from './ContractAna
 export type { IHelpDocument } from './HelpDocument';
 export type { IPasswordResetToken } from './PasswordResetToken';
 export type { IInvitation } from './Invitation';
+export type { IUserActivityLog, ActivityType, LogLevel } from './UserActivityLog';
+export type { ILoggingSettings } from './LoggingSettings';
 

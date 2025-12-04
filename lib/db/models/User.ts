@@ -17,6 +17,7 @@ export interface IUser extends Document {
   };
   isActive: boolean;
   lastLogin?: Date;
+  loggingEnabled?: boolean; // User-specific logging toggle
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -71,6 +72,11 @@ const UserSchema = new Schema<IUser>(
     },
     lastLogin: {
       type: Date,
+    },
+    loggingEnabled: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
   },
   {

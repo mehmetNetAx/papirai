@@ -101,6 +101,7 @@ export async function PATCH(
         email: z.string().email().optional(),
         role: z.enum(['system_admin', 'group_admin', 'company_admin', 'contract_manager', 'legal_reviewer', 'viewer']).optional(),
         isActive: z.boolean().optional(),
+        loggingEnabled: z.boolean().optional(),
         companyId: z.string().optional(),
         groupId: z.string().optional(),
         permissions: z.object({
@@ -130,6 +131,7 @@ export async function PATCH(
       if (validatedData.email) targetUser.email = validatedData.email.toLowerCase();
       if (validatedData.role) targetUser.role = validatedData.role;
       if (validatedData.isActive !== undefined) targetUser.isActive = validatedData.isActive;
+      if (validatedData.loggingEnabled !== undefined) targetUser.loggingEnabled = validatedData.loggingEnabled;
       if (validatedData.companyId) targetUser.companyId = new mongoose.Types.ObjectId(validatedData.companyId);
       if (validatedData.groupId) targetUser.groupId = new mongoose.Types.ObjectId(validatedData.groupId);
       if (validatedData.permissions) {

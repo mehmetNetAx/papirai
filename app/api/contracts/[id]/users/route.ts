@@ -18,31 +18,45 @@ export async function GET(
       const { id } = await params;
       await connectDB();
 
+      console.log(`[ContractUsers] Fetching users for contract ${id} by user ${user.id}`);
+      
       const contract = await Contract.findById(id).lean();
 
       if (!contract) {
+        console.error(`[ContractUsers] Contract ${id} not found`);
         return NextResponse.json(
           { error: 'Contract not found' },
           { status: 404 }
         );
       }
 
-      // Check if user can view this contract
-      const { canViewContract } = await import('@/lib/utils/permissions');
-      const canView = await canViewContract(
-        user,
-        contract.companyId,
-        contract.workspaceId,
-        contract.createdBy?.toString(),
-        contract.allowedEditors,
-        contract.assignedUsers,
-        id // contractId for checking ContractUserAssignment table
-      );
+      console.log(`[ContractUsers] Contract found: ${contract.title}, companyId: ${contract.companyId}, workspaceId: ${contract.workspaceId}`);
 
-      if (!canView) {
+      // Check if user can view this contract
+      try {
+        const { canViewContract } = await import('@/lib/utils/permissions');
+        const canView = await canViewContract(
+          user,
+          contract.companyId,
+          contract.workspaceId,
+          (contract as any).createdBy?.toString(),
+          contract.allowedEditors,
+          contract.assignedUsers,
+          id // contractId for checking ContractUserAssignment table
+        );
+
+        if (!canView) {
+          console.error(`[ContractUsers] User ${user.id} cannot view contract ${id}`);
+          return NextResponse.json(
+            { error: 'Forbidden: You do not have permission to view this contract' },
+            { status: 403 }
+          );
+        }
+      } catch (permissionError: any) {
+        console.error('[ContractUsers] Error checking permissions:', permissionError);
         return NextResponse.json(
-          { error: 'Forbidden' },
-          { status: 403 }
+          { error: `Permission check failed: ${permissionError.message}` },
+          { status: 500 }
         );
       }
 
@@ -85,6 +99,8 @@ export async function GET(
         .populate('companyId', 'name')
         .lean();
 
+      console.log(`[ContractUsers] Successfully fetched ${assignedUsers.length} assigned users and ${allowedEditors.length} allowed editors`);
+      
       return NextResponse.json({
         assignedUsers,
         allowedEditors: allowedEditors.map((u: any) => ({
@@ -95,10 +111,11 @@ export async function GET(
           companyName: (u.companyId as any)?.name || '',
         })),
       });
-    } catch (error) {
-      console.error('Error fetching contract users:', error);
+    } catch (error: any) {
+      console.error('[ContractUsers] Error fetching contract users:', error);
+      console.error('[ContractUsers] Error stack:', error.stack);
       return NextResponse.json(
-        { error: 'Failed to fetch contract users' },
+        { error: error.message || 'Failed to fetch contract users' },
         { status: 500 }
       );
     }

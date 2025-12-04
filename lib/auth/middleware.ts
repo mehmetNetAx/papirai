@@ -4,6 +4,7 @@ import {
   getSelectedCompanyIdFromRequest,
   getSelectedWorkspaceIdFromRequest,
 } from '@/lib/utils/context-cookie';
+import { logRequestActivity } from '@/lib/middleware/activity-logger';
 
 export interface AuthUser {
   id: string;
@@ -38,13 +39,25 @@ export async function getAuthUser(request: NextRequest): Promise<AuthUser | null
 
 export function requireAuth(handler: (req: NextRequest, user: AuthUser) => Promise<NextResponse>) {
   return async (req: NextRequest) => {
+    const startTime = Date.now();
     const user = await getAuthUser(req);
     
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    return handler(req, user);
+    // Execute handler
+    const response = await handler(req, user);
+
+    // Log activity asynchronously (don't block the response)
+    const pathname = new URL(req.url).pathname;
+    if (pathname.startsWith('/api/')) {
+      logRequestActivity(req, response, startTime).catch(err => {
+        console.error('[requireAuth] Error logging activity:', err);
+      });
+    }
+
+    return response;
   };
 }
 
